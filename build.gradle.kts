@@ -1,6 +1,7 @@
 plugins {
     java
     `maven-publish`
+    signing
 }
 
 val publishedArtifactIds = mapOf(
@@ -19,8 +20,13 @@ allprojects {
 subprojects {
     apply(plugin = "java")
     apply(plugin = "maven-publish")
+    apply(plugin = "signing")
 
     val publishedArtifactId = publishedArtifactIds[name] ?: name
+    val signingKey = providers.gradleProperty("signingInMemoryKey")
+        .orElse(providers.environmentVariable("SIGNING_KEY"))
+    val signingPassword = providers.gradleProperty("signingInMemoryKeyPassword")
+        .orElse(providers.environmentVariable("SIGNING_PASSWORD"))
 
     extensions.configure<BasePluginExtension> {
         archivesName.set(publishedArtifactId)
@@ -88,6 +94,17 @@ subprojects {
             }
         }
     }
+
+    extensions.configure<org.gradle.plugins.signing.SigningExtension> {
+        isRequired = providers.gradleProperty("release")
+            .map(String::toBoolean)
+            .orElse(!version.toString().endsWith("SNAPSHOT"))
+            .get()
+        if (signingKey.isPresent && signingPassword.isPresent) {
+            useInMemoryPgpKeys(signingKey.get(), signingPassword.get())
+        }
+        sign(extensions.getByType<org.gradle.api.publish.PublishingExtension>().publications)
+    }
 }
 
 tasks.register("licenseCheck") {
@@ -148,6 +165,32 @@ tasks.register("dependencyVulnerabilityCheck") {
     }
 }
 
+tasks.register("signingConfigurationCheck") {
+    group = "verification"
+    description = "Verifies release signing and provenance wiring are present."
+    inputs.files("build.gradle.kts", ".github/workflows/release.yml")
+    doLast {
+        val build = layout.projectDirectory.file("build.gradle.kts").asFile.readText()
+        check(build.contains("useInMemoryPgpKeys")) {
+            "Gradle signing must use in-memory PGP keys for CI releases."
+        }
+        check(build.contains("signingInMemoryKey")) {
+            "Gradle signing must support signingInMemoryKey properties."
+        }
+        val release = layout.projectDirectory.file(".github/workflows/release.yml").asFile
+        check(release.isFile) {
+            "Missing release workflow."
+        }
+        val workflow = release.readText()
+        check(workflow.contains("ORG_GRADLE_PROJECT_signingInMemoryKey")) {
+            "Release workflow must pass signing key to Gradle."
+        }
+        check(workflow.contains("provenance.json")) {
+            "Release workflow must publish provenance metadata."
+        }
+    }
+}
+
 tasks.register("jmhSmoke") {
     group = "verification"
     description = "Placeholder smoke gate for future JMH benchmarks; verifies benchmark scope is explicit."
@@ -164,5 +207,5 @@ tasks.register("releaseQualityGate") {
     group = "verification"
     description = "Runs the local release quality gates documented for JSpecify Migration Kit."
     dependsOn("build", "licenseCheck", "reproducibleBuildCheck",
-        "dependencyVulnerabilityCheck", "jmhSmoke")
+        "dependencyVulnerabilityCheck", "signingConfigurationCheck", "jmhSmoke")
 }

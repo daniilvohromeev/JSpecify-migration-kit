@@ -25,6 +25,10 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Build and verify
+        env:
+          ORG_GRADLE_PROJECT_release: "true"
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
         run: ./gradlew releaseQualityGate publishToMavenLocal :jspecify-cli:distZip :jspecify-cli:distTar
 
       - name: Prepare release assets
@@ -43,6 +47,16 @@ jobs:
           cp modules/jspecify-maven-plugin/build/libs/jspecify-migration-maven-plugin-*.jar build/release-assets/
           cp modules/jspecify-rewrite-recipes/build/libs/jspecify-migration-rewrite-recipes-*.jar build/release-assets/
           (cd build/release-assets && shasum -a 256 * > checksums.txt)
+          cat > build/release-assets/provenance.json <<JSON
+          {
+            "repository": "${GITHUB_REPOSITORY}",
+            "ref": "${GITHUB_REF}",
+            "sha": "${GITHUB_SHA}",
+            "workflow": "${GITHUB_WORKFLOW}",
+            "runId": "${GITHUB_RUN_ID}",
+            "runAttempt": "${GITHUB_RUN_ATTEMPT}"
+          }
+          JSON
           cat > build/release-assets/sbom-cyclonedx.json <<'JSON'
           {
             "bomFormat": "CycloneDX",
