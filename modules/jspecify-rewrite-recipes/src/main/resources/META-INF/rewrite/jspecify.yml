@@ -41,9 +41,24 @@ recipeList:
   - io.github.javamodernizationlabs.jspecify.rewrite.ConvertKnownAnnotations
 ---
 type: specs.openrewrite.org/v1beta/recipe
+name: io.github.jml.jspecify.FindUnsafeNullnessDefaults
+displayName: Find unsafe nullness defaults
+description: Marks package-level default/meta nullness annotations for manual review.
+recipeList:
+  - org.openrewrite.java.search.FindAnnotations:
+      annotationPattern: "@javax.annotation.ParametersAreNonnullByDefault"
+  - org.openrewrite.java.search.FindAnnotations:
+      annotationPattern: "@org.springframework.lang.NonNullApi"
+  - org.openrewrite.java.search.FindAnnotations:
+      annotationPattern: "@org.springframework.lang.NonNullFields"
+  - org.openrewrite.java.search.FindAnnotations:
+      annotationPattern: "@javax.annotation.meta.TypeQualifierDefault"
+---
+type: specs.openrewrite.org/v1beta/recipe
 name: io.github.jml.jspecify.Migrate
 displayName: Full JSpecify migration (safe defaults)
-description: Adds the JSpecify dependency and converts known nullness annotations.
+description: Adds the JSpecify dependency, marks unsafe defaults for review and converts known nullness annotations.
 recipeList:
   - io.github.jml.jspecify.AddJSpecifyDependency
+  - io.github.jml.jspecify.FindUnsafeNullnessDefaults
   - io.github.jml.jspecify.ConvertKnownAnnotations

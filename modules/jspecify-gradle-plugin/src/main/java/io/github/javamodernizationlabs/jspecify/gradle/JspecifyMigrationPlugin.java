@@ -48,16 +48,18 @@ public class JspecifyMigrationPlugin implements Plugin<Project> {
 
         project.getTasks().register("jspecifyRewriteDryRun", JspecifyRewriteHintTask.class, t -> {
             t.setGroup("verification");
-            t.setDescription("Show the command to preview JSpecify OpenRewrite recipes.");
+            t.setDescription("Preview safe JSpecify rewrite recipes.");
             t.getApply().set(false);
             t.getRecipe().set("io.github.jml.jspecify.Migrate");
+            t.getOutputDirectory().set(extension.getReportsDirectory());
         });
 
         project.getTasks().register("jspecifyRewriteApply", JspecifyRewriteHintTask.class, t -> {
             t.setGroup("verification");
-            t.setDescription("Show the command to apply JSpecify OpenRewrite recipes.");
+            t.setDescription("Apply safe JSpecify rewrite recipes.");
             t.getApply().set(true);
             t.getRecipe().set("io.github.jml.jspecify.Migrate");
+            t.getOutputDirectory().set(extension.getReportsDirectory());
         });
 
         project.getTasks().register("jspecifyCoverage", JspecifyCoverageTask.class, t -> {
