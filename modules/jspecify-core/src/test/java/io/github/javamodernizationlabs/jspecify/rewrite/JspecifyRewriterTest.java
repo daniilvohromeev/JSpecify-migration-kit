@@ -151,6 +151,78 @@ class JspecifyRewriterTest {
     }
 
     @Test
+    void doesNotAddNullMarkedToGeneratedSources(@TempDir Path tmp) throws IOException {
+        Path generatedRoot = tmp.resolve("build/generated/sources/annotations/java/main");
+        Path source = generatedRoot.resolve("com/acme/generated/Api.java");
+        Files.createDirectories(source.getParent());
+        Files.writeString(source,
+                """
+                package com.acme.generated;
+                public class Api {}
+                """);
+
+        RewriteResult result = new JspecifyRewriter()
+                .rewrite(ProjectModel.of(tmp, List.of(generatedRoot),
+                                List.of("**/generated/**"), false),
+                        List.of("add-null-marked"), true);
+
+        assertEquals(0, result.changedFiles());
+        assertTrue(!Files.exists(source.getParent().resolve("package-info.java")));
+    }
+
+    @Test
+    void doesNotConvertGeneratedSources(@TempDir Path tmp) throws IOException {
+        Path generatedRoot = tmp.resolve("build/generated/sources/annotations/java/main");
+        Path source = generatedRoot.resolve("com/acme/generated/Api.java");
+        Files.createDirectories(source.getParent());
+        Files.writeString(source,
+                """
+                package com.acme.generated;
+                import org.jetbrains.annotations.Nullable;
+                class Api { @Nullable String name() { return null; } }
+                """);
+
+        RewriteResult result = new JspecifyRewriter()
+                .rewrite(ProjectModel.of(tmp, List.of(generatedRoot),
+                                List.of("**/generated/**"), false),
+                        List.of("convert-known-annotations"), true);
+
+        assertEquals(0, result.changedFiles());
+        assertTrue(Files.readString(source).contains("org.jetbrains.annotations.Nullable"));
+    }
+
+    @Test
+    void keepsOldDependenciesWhenExcludedGeneratedSourcesStillUseLegacyAnnotations(
+            @TempDir Path tmp) throws IOException {
+        Path build = tmp.resolve("build.gradle.kts");
+        Files.writeString(build,
+                """
+                dependencies {
+                    compileOnly("org.jetbrains:annotations:26.0.1")
+                }
+                """);
+        Path generatedRoot = tmp.resolve("build/generated/sources/annotations/java/main");
+        Path source = generatedRoot.resolve("com/acme/generated/Api.java");
+        Files.createDirectories(source.getParent());
+        Files.writeString(source,
+                """
+                package com.acme.generated;
+                import org.jetbrains.annotations.Nullable;
+                class Api { @Nullable String name() { return null; } }
+                """);
+
+        RewriteResult result = new JspecifyRewriter()
+                .rewrite(ProjectModel.of(tmp, List.of(generatedRoot),
+                                List.of("**/generated/**"), false),
+                        List.of("remove-old-annotation-dependencies"), true);
+
+        assertEquals(0, result.changedFiles());
+        assertTrue(result.warnings().stream()
+                .anyMatch(warning -> warning.contains("legacy usages remain")));
+        assertTrue(Files.readString(build).contains("org.jetbrains:annotations"));
+    }
+
+    @Test
     void reportsAmbiguousTypeUseWithoutGuessing(@TempDir Path tmp) throws IOException {
         Path source = tmp.resolve("src/main/java/com/acme/Api.java");
         Files.createDirectories(source.getParent());

@@ -89,4 +89,17 @@ class JspecifyConfigLoaderTest {
                 config.kotlinVerificationGeneratedTestsDirectory());
         assertFalse(config.followSymlinks());
     }
+
+    @Test
+    void generatedCodeExcludesCanBeDisabled() {
+        JspecifyConfig config = JspecifyConfigLoader.parse(List.of(
+                "migration:",
+                "  generatedCode:",
+                "    exclude: false",
+                "    patterns:",
+                "      - \"**/generated/**\""
+        ));
+
+        assertTrue(config.generatedCodeExcludes().isEmpty());
+    }
 }

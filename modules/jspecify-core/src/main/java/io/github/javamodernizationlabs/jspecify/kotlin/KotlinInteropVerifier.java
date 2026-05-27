@@ -89,6 +89,7 @@ public final class KotlinInteropVerifier {
             try (Stream<Path> stream = Files.walk(root)) {
                 Iterable<Path> javaFiles = stream
                         .filter(Files::isRegularFile)
+                        .filter(project::shouldScan)
                         .filter(path -> path.toString().endsWith(".java"))
                         ::iterator;
                 for (Path file : javaFiles) {
@@ -120,6 +121,7 @@ public final class KotlinInteropVerifier {
             try (Stream<Path> stream = Files.walk(root)) {
                 Iterable<Path> files = stream
                         .filter(Files::isRegularFile)
+                        .filter(project::shouldScan)
                         .filter(path -> path.getFileName().toString().equals("package-info.java"))
                         ::iterator;
                 for (Path file : files) {

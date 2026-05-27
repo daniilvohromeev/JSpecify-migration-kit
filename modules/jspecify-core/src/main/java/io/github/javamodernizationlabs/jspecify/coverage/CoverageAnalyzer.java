@@ -49,7 +49,7 @@ public final class CoverageAnalyzer {
             try (Stream<Path> stream = Files.walk(root)) {
                 stream
                         .filter(Files::isRegularFile)
-                        .filter(p -> shouldScan(project, p))
+                        .filter(project::shouldScan)
                         .filter(p -> p.toString().endsWith(".java"))
                         .forEach(javaFiles::add);
             }
@@ -180,71 +180,11 @@ public final class CoverageAnalyzer {
         }
         if (!project.publicApiIncludes().isEmpty()
                 && project.publicApiIncludes().stream()
-                .noneMatch(pattern -> packageMatch(pattern, packageName))) {
+                .noneMatch(pattern -> project.packageMatches(pattern, packageName))) {
             return false;
         }
         return project.publicApiExcludes().stream()
-                .noneMatch(pattern -> packageMatch(pattern, packageName));
-    }
-
-    private boolean shouldScan(ProjectModel project, Path file) {
-        if (Files.isSymbolicLink(file) && !project.followSymlinks()) {
-            return false;
-        }
-        Path normalized = file.toAbsolutePath().normalize();
-        if (!project.followSymlinks() && !normalized.startsWith(project.rootDirectory())) {
-            return false;
-        }
-        Path relative = project.rootDirectory().relativize(normalized);
-        String normalizedRelative = relative.toString().replace('\\', '/');
-        for (String pattern : project.excludedPathPatterns()) {
-            if (pathGlobMatch(pattern, normalizedRelative)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private boolean pathGlobMatch(String pattern, String relativePath) {
-        StringBuilder regex = new StringBuilder();
-        for (int i = 0; i < pattern.length(); i++) {
-            char c = pattern.charAt(i);
-            if (c == '*' && i + 1 < pattern.length() && pattern.charAt(i + 1) == '*') {
-                regex.append(".*");
-                i++;
-            } else if (c == '*') {
-                regex.append("[^/]*");
-            } else {
-                if ("\\.[]{}()+-^$?|".indexOf(c) >= 0) {
-                    regex.append('\\');
-                }
-                regex.append(c);
-            }
-        }
-        return relativePath.matches(regex.toString());
-    }
-
-    private boolean packageMatch(String pattern, String packageName) {
-        if (pattern.endsWith(".**")) {
-            String prefix = pattern.substring(0, pattern.length() - 3);
-            return packageName.equals(prefix) || packageName.startsWith(prefix + ".");
-        }
-        StringBuilder regex = new StringBuilder();
-        for (int i = 0; i < pattern.length(); i++) {
-            char c = pattern.charAt(i);
-            if (c == '*' && i + 1 < pattern.length() && pattern.charAt(i + 1) == '*') {
-                regex.append(".*");
-                i++;
-            } else if (c == '*') {
-                regex.append("[^.]*");
-            } else {
-                if ("\\.[]{}()+-^$?|".indexOf(c) >= 0) {
-                    regex.append('\\');
-                }
-                regex.append(c);
-            }
-        }
-        return packageName.matches(regex.toString());
+                .noneMatch(pattern -> project.packageMatches(pattern, packageName));
     }
 
     private List<String> parameters(String line) {

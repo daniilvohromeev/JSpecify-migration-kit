@@ -62,7 +62,8 @@ public final class JspecifyConfigLoader {
                 String value = unquote(line.substring(2).trim());
                 if (listTarget.equals("reports.formats")) {
                     builder.reportFormats.add(value);
-                } else if (listTarget.equals("migration.generatedCode.patterns")) {
+                } else if (listTarget.equals("migration.generatedCode.patterns")
+                        && builder.generatedCodeExclude) {
                     builder.generatedCodeExcludes.add(value);
                 } else if (listTarget.equals("sourceRoots")) {
                     builder.sourceRoots.add(Path.of(value));
@@ -106,6 +107,11 @@ public final class JspecifyConfigLoader {
                 builder.reportFormats.addAll(parseInlineList(value));
             } else if (dotted.equals("reports.outputDirectory")) {
                 builder.reportsOutputDirectory = Path.of(unquote(value));
+            } else if (dotted.equals("migration.generatedCode.exclude")) {
+                builder.generatedCodeExclude = Boolean.parseBoolean(value.toLowerCase(Locale.ROOT));
+                if (!builder.generatedCodeExclude) {
+                    builder.generatedCodeExcludes.clear();
+                }
             } else if (dotted.equals("scanner.followSymlinks")) {
                 builder.followSymlinks = Boolean.parseBoolean(value.toLowerCase(Locale.ROOT));
             } else if (dotted.equals("publicApi.jpmsExportsOnly")) {
@@ -191,6 +197,7 @@ public final class JspecifyConfigLoader {
         private final List<String> generatedCodeExcludes = new ArrayList<>(
                 List.of("**/generated/**", "**/target/generated-sources/**",
                         "**/build/generated/**"));
+        private boolean generatedCodeExclude = true;
         private final List<Path> sourceRoots = new ArrayList<>();
         private final List<String> markPackages = new ArrayList<>();
         private final List<String> leaveUnmarkedPackages = new ArrayList<>();

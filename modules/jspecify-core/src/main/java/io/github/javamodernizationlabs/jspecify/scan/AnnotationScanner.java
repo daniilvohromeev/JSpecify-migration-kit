@@ -54,7 +54,7 @@ public final class AnnotationScanner {
             try (Stream<Path> stream = Files.walk(root)) {
                 Iterable<Path> javaFiles = stream
                         .filter(Files::isRegularFile)
-                        .filter(p -> shouldScan(project, p))
+                        .filter(project::shouldScan)
                         .filter(p -> p.toString().endsWith(".java"))
                         ::iterator;
                 for (Path file : javaFiles) {
@@ -121,43 +121,6 @@ public final class AnnotationScanner {
                 }
             }
         }
-    }
-
-    private boolean shouldScan(ProjectModel project, Path file) {
-        if (Files.isSymbolicLink(file) && !project.followSymlinks()) {
-            return false;
-        }
-        Path normalized = file.toAbsolutePath().normalize();
-        if (!project.followSymlinks() && !normalized.startsWith(project.rootDirectory())) {
-            return false;
-        }
-        Path relative = project.rootDirectory().relativize(normalized);
-        String normalizedRelative = relative.toString().replace('\\', '/');
-        for (String pattern : project.excludedPathPatterns()) {
-            if (globMatch(pattern, normalizedRelative)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private boolean globMatch(String pattern, String relativePath) {
-        StringBuilder regex = new StringBuilder();
-        for (int i = 0; i < pattern.length(); i++) {
-            char c = pattern.charAt(i);
-            if (c == '*' && i + 1 < pattern.length() && pattern.charAt(i + 1) == '*') {
-                regex.append(".*");
-                i++;
-            } else if (c == '*') {
-                regex.append("[^/]*");
-            } else {
-                if ("\\.[]{}()+-^$?|".indexOf(c) >= 0) {
-                    regex.append('\\');
-                }
-                regex.append(c);
-            }
-        }
-        return relativePath.matches(regex.toString());
     }
 
     private Set<String> knownAnnotations() {

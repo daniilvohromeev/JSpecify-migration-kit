@@ -23,6 +23,9 @@ public class VerifyKotlinCommand implements Callable<Integer> {
     @Option(names = {"--project"}, defaultValue = ".") Path project;
     @Option(names = {"--generate-samples"}) boolean generateSamples;
     @Option(names = {"--compile"}) boolean compile;
+    @Option(names = {"--fail-on-warnings"},
+            description = "Return a non-zero exit code when Kotlin verification emits warnings.")
+    boolean failOnWarnings;
     @Option(names = {"--classpath"}, split = ",") List<Path> classpath;
     @Option(names = {"--output-dir"}) Path output;
 
@@ -41,7 +44,8 @@ public class VerifyKotlinCommand implements Callable<Integer> {
         if (!result.warnings().isEmpty()) {
             result.warnings().forEach(warning -> System.err.println("warning: " + warning));
         }
-        return 0;
+        boolean fail = failOnWarnings || config.kotlinVerificationFailOnWarnings();
+        return fail && !result.warnings().isEmpty() ? 1 : 0;
     }
 
     private Path resolveGeneratedTestsDirectory(Path projectRoot, JspecifyConfig config) {

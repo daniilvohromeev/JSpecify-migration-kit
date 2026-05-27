@@ -116,6 +116,74 @@ public record ProjectModel(
         }
     }
 
+    public boolean shouldScan(Path file) {
+        if (Files.isSymbolicLink(file) && !followSymlinks) {
+            return false;
+        }
+        Path normalized = file.toAbsolutePath().normalize();
+        if (!followSymlinks && !normalized.startsWith(rootDirectory)) {
+            return false;
+        }
+        Path relative = normalized.startsWith(rootDirectory)
+                ? rootDirectory.relativize(normalized)
+                : normalized;
+        String normalizedRelative = relative.toString().replace('\\', '/');
+        for (String pattern : excludedPathPatterns) {
+            if (pathGlobMatch(pattern, normalizedRelative)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public boolean packageMatches(String pattern, String packageName) {
+        if (pattern.endsWith(".**")) {
+            String prefix = pattern.substring(0, pattern.length() - 3);
+            return packageName.equals(prefix) || packageName.startsWith(prefix + ".");
+        }
+        StringBuilder regex = new StringBuilder();
+        for (int i = 0; i < pattern.length(); i++) {
+            char c = pattern.charAt(i);
+            if (c == '*' && i + 1 < pattern.length() && pattern.charAt(i + 1) == '*') {
+                regex.append(".*");
+                i++;
+            } else if (c == '*') {
+                regex.append("[^.]*");
+            } else {
+                if ("\\.[]{}()+-^$?|".indexOf(c) >= 0) {
+                    regex.append('\\');
+                }
+                regex.append(c);
+            }
+        }
+        return packageName.matches(regex.toString());
+    }
+
+    private boolean pathGlobMatch(String pattern, String relativePath) {
+        String normalizedPattern = pattern.replace('\\', '/');
+        if (normalizedPattern.startsWith("**/")
+                && pathGlobMatch(normalizedPattern.substring(3), relativePath)) {
+            return true;
+        }
+        StringBuilder regex = new StringBuilder();
+        for (int i = 0; i < normalizedPattern.length(); i++) {
+            char c = normalizedPattern.charAt(i);
+            if (c == '*' && i + 1 < normalizedPattern.length()
+                    && normalizedPattern.charAt(i + 1) == '*') {
+                regex.append(".*");
+                i++;
+            } else if (c == '*') {
+                regex.append("[^/]*");
+            } else {
+                if ("\\.[]{}()+-^$?|".indexOf(c) >= 0) {
+                    regex.append('\\');
+                }
+                regex.append(c);
+            }
+        }
+        return relativePath.matches(regex.toString());
+    }
+
     private static boolean isConventionalJavaSourceRoot(Path path) {
         int count = path.getNameCount();
         if (count < 3) {

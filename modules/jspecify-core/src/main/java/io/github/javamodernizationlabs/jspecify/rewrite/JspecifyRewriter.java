@@ -188,6 +188,7 @@ public final class JspecifyRewriter {
             try (Stream<Path> stream = Files.walk(root)) {
                 Iterable<Path> files = stream
                         .filter(Files::isRegularFile)
+                        .filter(project::shouldScan)
                         .filter(p -> p.toString().endsWith(".java"))
                         ::iterator;
                 for (Path file : files) {
@@ -320,6 +321,7 @@ public final class JspecifyRewriter {
             try (Stream<Path> stream = Files.walk(root)) {
                 Iterable<Path> files = stream
                         .filter(Files::isRegularFile)
+                        .filter(project::shouldScan)
                         .filter(p -> p.toString().endsWith(".java"))
                         ::iterator;
                 for (Path file : files) {
@@ -470,6 +472,7 @@ public final class JspecifyRewriter {
             try (Stream<Path> stream = Files.walk(root)) {
                 Iterable<Path> files = stream
                         .filter(Files::isRegularFile)
+                        .filter(project::shouldScan)
                         .filter(p -> p.toString().endsWith(".java"))
                         ::iterator;
                 for (Path file : files) {
