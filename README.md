@@ -1,88 +1,183 @@
-# JSpecify Migration Kit
+<h1 align="center">JSpecify Migration Kit</h1>
 
-Tooling for migrating Java projects to JSpecify nullness annotations.
+<p align="center">
+  Production-minded tooling for moving Java projects from legacy nullness annotations to JSpecify.
+</p>
 
-## Quick start
+<p align="center">
+  <a href="https://github.com/daniilvohromeev/JSpecify-migration-kit/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/daniilvohromeev/JSpecify-migration-kit/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/daniilvohromeev/JSpecify-migration-kit/actions/workflows/jml.yml"><img alt="JML" src="https://github.com/daniilvohromeev/JSpecify-migration-kit/actions/workflows/jml.yml/badge.svg"></a>
+  <a href="https://github.com/daniilvohromeev/JSpecify-migration-kit/actions/workflows/security.yml"><img alt="Security" src="https://github.com/daniilvohromeev/JSpecify-migration-kit/actions/workflows/security.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
+  <a href="https://docs.oracle.com/en/java/javase/21/"><img alt="Java 21+" src="https://img.shields.io/badge/Java-21%2B-007396.svg"></a>
+  <a href="https://jspecify.dev/"><img alt="JSpecify 1.0" src="https://img.shields.io/badge/JSpecify-1.0.0-4b32c3.svg"></a>
+</p>
+
+<p align="center">
+  <a href="#why-jspecify-migration-kit">Why</a> |
+  <a href="#quick-start">Quick Start</a> |
+  <a href="#build-integrations">Build Integrations</a> |
+  <a href="#migration-playbook">Migration Playbook</a> |
+  <a href="#configuration">Configuration</a> |
+  <a href="#github-actions">GitHub Actions</a> |
+  <a href="#modules">Modules</a>
+</p>
+
+---
+
+JSpecify Migration Kit is a Java 21+ CLI, Gradle plugin, Maven plugin surface,
+and OpenRewrite recipe catalog for teams that want null-safety migration to be
+observable, repeatable, and CI-friendly.
+
+It inventories existing annotations, rewrites safe cases, reports risky cases,
+generates NullAway configuration, and verifies what Kotlin callers will see
+after the migration.
+
+## Why JSpecify Migration Kit?
+
+JSpecify is a type-use nullness model. Most legacy Java annotations are not.
+That gap makes migrations easy to start and easy to get subtly wrong.
+
+This kit is built around a safer workflow:
+
+| Capability | What it gives you |
+| --- | --- |
+| Annotation inventory | Finds JetBrains, JSR-305, Spring, FindBugs, Checker Framework, RxJava, Reactor, Android, Micrometer, and Lombok nullness annotations. |
+| Migration plan | Turns inventory into ordered phases with risk, issues, recommendations, and CI gates. |
+| OpenRewrite recipes | Adds `org.jspecify:jspecify`, converts known annotations, flags unsafe package defaults, and removes old annotation dependencies. |
+| Multi-format reports | Writes console, HTML, Markdown, JSON, SARIF, and JUnit XML output for humans, CI, and code scanning. |
+| Kotlin verification | Generates Kotlin-facing assertions so platform type leaks are visible before release. |
+| NullAway handoff | Produces Gradle/Error Prone snippets and a staged warn-to-error rollout path. |
+
+## Quick Start
+
+Install the local CLI from source:
 
 ```bash
 ./gradlew :jspecify-cli:installDist
-modules/jspecify-cli/build/install/jml/bin/jml jspecify plan --project .
-modules/jspecify-cli/build/install/jml/bin/jml jspecify rewrite --recipe convert-known-annotations --dry-run
+JML=modules/jspecify-cli/build/install/jml/bin/jml
 ```
 
-Use `--apply` only after reviewing the generated rewrite report:
+Create a first migration plan:
 
 ```bash
-modules/jspecify-cli/build/install/jml/bin/jml jspecify rewrite \
+$JML jspecify plan \
+  --project . \
+  --format console,html,markdown,sarif,json \
+  --output-dir build/reports/jml/jspecify
+```
+
+Preview the safe rewrite set:
+
+```bash
+$JML jspecify rewrite \
+  --project . \
+  --recipe add-dependency,convert-known-annotations \
+  --dry-run
+```
+
+Apply only after reviewing `build/reports/jml/jspecify/rewrite.md`:
+
+```bash
+$JML jspecify rewrite \
+  --project . \
   --recipe add-dependency,convert-known-annotations \
   --apply
 ```
 
-## CLI
+Generate coverage and Kotlin interop artifacts:
 
 ```bash
-jml jspecify plan --project .
-jml jspecify coverage --scope public-api --format html,json
-jml jspecify verify-kotlin --generate-samples --compile
-jml jspecify nullaway-config --mode warn --apply
-jml jspecify explain jspecify.public-api-unspecified
+$JML jspecify coverage --project . --scope public-api --format html,json
+$JML jspecify verify-kotlin --project . --generate-samples --compile
 ```
 
-CI baseline flow:
+## CLI
+
+The command surface follows `jml jspecify <command>`:
+
+| Command | Purpose |
+| --- | --- |
+| `plan` | Inventory annotations, estimate risk, and write migration reports. |
+| `rewrite` | Preview or apply selected rewrite recipes. |
+| `coverage` | Measure public API nullness coverage. |
+| `nullaway-config` | Generate NullAway/Error Prone Gradle Kotlin DSL snippets. |
+| `verify-kotlin` | Generate Kotlin verification sources and optional compile checks. |
+| `report` | Emit JSON, Markdown, SARIF, HTML, and JUnit XML reports from a scan. |
+| `explain` | Explain a JSpecify Migration Kit rule id. |
+
+Examples:
 
 ```bash
 jml jspecify plan --project . --baseline-write config/jspecify-baseline.json
 jml jspecify plan --project . --baseline config/jspecify-baseline.json --fail-on high
+jml jspecify nullaway-config --mode warn --annotated-packages com.acme --apply
+jml jspecify explain jspecify.public-api-unspecified
 ```
 
-## Gradle
+JBang alias metadata is included in `jbang-catalog.json`:
+
+```bash
+jbang jml@jbang-catalog.json jspecify plan --project .
+```
+
+## Build Integrations
+
+### Gradle
 
 ```kotlin
 plugins {
-    id("io.github.javamodernizationlabs.jspecify-migration") version "0.1.0"
+    id("io.github.javamodernizationlabs.jspecify-migration") version "0.1.0-SNAPSHOT"
 }
 
 jspecifyMigration {
     jspecifyVersion.set("1.0.0")
+    reportsDirectory.set(layout.buildDirectory.dir("reports/jml/jspecify"))
 
     migration {
         mode.set("incremental")
         defaultScope.set("public-api")
         convertKnownAnnotations.set(true)
         addNullMarked.set(false)
+        inferFromJavadocs.set(false)
     }
 
     nullaway {
         enabled.set(true)
         mode.set("warn")
         annotatedPackages.set(listOf("com.acme"))
+        excludedClasses.set(listOf("com.acme.generated.*"))
     }
 
     kotlinVerification {
         enabled.set(true)
         generatedSourceSet.set("jspecifyKotlinVerification")
+        failOnWarnings.set(false)
     }
 }
 ```
 
-Main tasks:
+| Task | Output |
+| --- | --- |
+| `jspecifyPlan` | Migration plan and issue reports. |
+| `jspecifyReport` | JSON, Markdown, SARIF, HTML, and JUnit XML reports. |
+| `jspecifyRewriteDryRun` | Safe rewrite preview. |
+| `jspecifyRewriteApply` | In-place safe rewrite application. |
+| `jspecifyCoverage` | Public API nullness coverage report. |
+| `jspecifyNullAwayCheck` | NullAway readiness report and Gradle snippet. |
+| `jspecifyVerifyKotlin` | Kotlin interop verification artifacts. |
 
 ```bash
-./gradlew jspecifyPlan
-./gradlew jspecifyRewriteDryRun
-./gradlew jspecifyRewriteApply
-./gradlew jspecifyCoverage
-./gradlew jspecifyNullAwayCheck
-./gradlew jspecifyVerifyKotlin
+./gradlew jspecifyPlan jspecifyCoverage jspecifyRewriteDryRun
 ```
 
-## Maven
+### Maven
 
 ```xml
 <plugin>
   <groupId>io.github.javamodernizationlabs</groupId>
   <artifactId>jspecify-migration-maven-plugin</artifactId>
-  <version>0.1.0</version>
+  <version>0.1.0-SNAPSHOT</version>
   <configuration>
     <jspecifyVersion>1.0.0</jspecifyVersion>
     <migrationMode>incremental</migrationMode>
@@ -92,8 +187,6 @@ Main tasks:
 </plugin>
 ```
 
-Goals:
-
 ```bash
 mvn jspecify-migration:plan
 mvn jspecify-migration:rewrite-dry-run
@@ -101,7 +194,154 @@ mvn jspecify-migration:rewrite-apply
 mvn jspecify-migration:coverage
 mvn jspecify-migration:nullaway-check
 mvn jspecify-migration:verify-kotlin
+mvn jspecify-migration:report
 ```
+
+### OpenRewrite
+
+```kotlin
+plugins {
+    id("org.openrewrite.rewrite") version "latest.release"
+}
+
+rewrite {
+    activeRecipe("io.github.jml.jspecify.Migrate")
+}
+
+dependencies {
+    rewrite("io.github.javamodernizationlabs:jspecify-migration-rewrite-recipes:0.1.0-SNAPSHOT")
+}
+```
+
+Available recipe entry points:
+
+| Recipe | Description |
+| --- | --- |
+| `io.github.jml.jspecify.Migrate` | Safe default migration bundle. |
+| `io.github.jml.jspecify.AddJSpecifyDependency` | Adds `org.jspecify:jspecify`. |
+| `io.github.jml.jspecify.ConvertKnownAnnotations` | Converts known legacy annotations. |
+| `io.github.jml.jspecify.FindUnsafeNullnessDefaults` | Flags legacy package-level defaults for review. |
+| `io.github.jml.jspecify.FixTypeUseAnnotationPlacement` | Finds ambiguous container-vs-element placements. |
+| `io.github.jml.jspecify.RemoveOldAnnotationDependencies` | Removes old annotation-only dependencies. |
+| `io.github.jml.jspecify.SpringPreset` | Spring-focused migration preset. |
+| `io.github.jml.jspecify.ReactorPreset` | Reactor-focused migration preset. |
+| `io.github.jml.jspecify.MicrometerPreset` | Micrometer-focused migration preset. |
+
+## Migration Playbook
+
+1. Build an inventory with `jml jspecify plan`.
+2. Add the JSpecify dependency with the rewrite recipe.
+3. Convert known `@Nullable` and `@NonNull` annotations.
+4. Review ambiguous type-use placements manually.
+5. Add `@NullMarked` package by package, starting with low-risk internals.
+6. Run public API coverage and Kotlin verification.
+7. Enable NullAway in `warn` mode.
+8. Commit a baseline and promote CI to `error` mode when new issues are under control.
+
+The planner emits the same phases directly in report output, so local runs and
+CI reviews stay aligned.
+
+## Configuration
+
+The CLI reads `jml.yml` and `jspecify.yml` from the project root. Unknown keys
+are ignored so newer configs stay compatible with older binaries.
+
+```yaml
+jspecify:
+  version: "1.0.0"
+
+reports:
+  formats: [console, html, markdown, sarif, json]
+  outputDirectory: build/reports/jml/jspecify
+
+sourceRoots:
+  - src/main/java
+  - src/test/java
+
+migration:
+  generatedCode:
+    exclude: true
+    patterns:
+      - "**/generated/**"
+      - "**/target/generated-sources/**"
+      - "**/build/generated/**"
+
+packagePolicy:
+  markPackages:
+    - com.acme.internal
+  leaveUnmarked:
+    - com.acme.legacy
+
+publicApi:
+  include:
+    - com.acme.api.**
+  exclude:
+    - com.acme.internal.**
+  jpmsExportsOnly: false
+
+nullaway:
+  enabled: true
+  mode: warn
+  annotatedPackages:
+    - com.acme
+  excludedClasses:
+    - com.acme.generated.*
+
+kotlinVerification:
+  enabled: true
+  failOnWarnings: false
+  generatedTestsDirectory: build/jspecify-kotlin-verification
+
+scanner:
+  followSymlinks: false
+
+annotations:
+  mappings:
+    com.example.Nullable: org.jspecify.annotations.Nullable
+    com.example.NotNull: org.jspecify.annotations.NonNull
+```
+
+## Reports
+
+Reports default to `build/reports/jml/jspecify`.
+
+| File | Consumer |
+| --- | --- |
+| `index.html` | Human review in a browser. |
+| `plan.md` | Pull request comments, release notes, and migration docs. |
+| `plan.json` | Dashboards and internal platform tooling. |
+| `plan.sarif` | GitHub code scanning. |
+| `TEST-jspecify-migration.xml` | CI systems that understand JUnit XML. |
+| `rewrite.md` | Dry-run and apply summaries for rewrite steps. |
+| `nullaway.gradle.kts` | Generated Error Prone/NullAway Gradle snippet. |
+
+## GitHub Actions
+
+This repository ships a composite action for JSpecify analysis.
+
+```yaml
+name: JML
+
+on:
+  pull_request:
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/jml-analyze
+        with:
+          tools: jspecify
+          fail-on: high
+          sarif-upload: true
+```
+
+The action installs the local CLI, runs `jml jspecify plan`, writes JSON, SARIF,
+HTML, and JUnit reports, then uploads SARIF when requested.
 
 ## Before and After
 
@@ -114,8 +354,13 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class UserApi {
-    public @NotNull String name() { return ""; }
-    public @Nullable String nickname() { return null; }
+    public @NotNull String name() {
+        return "";
+    }
+
+    public @Nullable String nickname() {
+        return null;
+    }
 }
 ```
 
@@ -128,8 +373,13 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 public class UserApi {
-    public @NonNull String name() { return ""; }
-    public @Nullable String nickname() { return null; }
+    public @NonNull String name() {
+        return "";
+    }
+
+    public @Nullable String nickname() {
+        return null;
+    }
 }
 ```
 
@@ -142,7 +392,7 @@ package com.acme;
 import org.jspecify.annotations.NullMarked;
 ```
 
-The Kotlin verifier then generates typed assertions:
+Kotlin verification can then assert caller-facing types:
 
 ```kotlin
 fun verifyUserApi(api: com.acme.UserApi) {
@@ -151,72 +401,46 @@ fun verifyUserApi(api: com.acme.UserApi) {
 }
 ```
 
-Unmarked public API is reported as `KOTLIN_PLATFORM_TYPE_LEAK` until the package or
-return type has an explicit nullness contract.
+## Modules
 
-## Recipes
+| Module | Responsibility |
+| --- | --- |
+| `jspecify-core` | Config loading, annotation scanning, migration planning, reports, baselines, coverage, rewrite model, and Kotlin verification model. |
+| `jspecify-rewrite-recipes` | OpenRewrite recipe catalog and custom Java recipes. |
+| `jspecify-cli` | `jml jspecify ...` command line interface. |
+| `jspecify-gradle-plugin` | Gradle plugin `io.github.javamodernizationlabs.jspecify-migration`. |
+| `jspecify-maven-plugin` | Maven goals for plan, rewrite, coverage, NullAway, Kotlin verification, and reports. |
 
-The OpenRewrite catalog is published from `jspecify-rewrite-recipes`.
-
-```kotlin
-plugins {
-    id("org.openrewrite.rewrite") version "latest.release"
-}
-
-rewrite {
-    activeRecipe("io.github.jml.jspecify.Migrate")
-}
-
-dependencies {
-    rewrite("io.github.javamodernizationlabs:jspecify-migration-rewrite-recipes:0.1.0")
-}
-```
-
-Available presets:
-
-- `io.github.jml.jspecify.SpringPreset`
-- `io.github.jml.jspecify.ReactorPreset`
-- `io.github.jml.jspecify.MicrometerPreset`
-
-## GitHub Actions
-
-This repository includes a composite action:
-
-```yaml
-- uses: java-modernization-labs/jml-action@v0.1.0
-  with:
-    tools: jspecify
-    fail-on: high
-    sarif-upload: true
-```
-
-When used from this repository, the local path is:
-
-```yaml
-- uses: ./.github/actions/jml-analyze
-  with:
-    tools: jspecify
-    sarif-upload: true
-```
-
-## Release Checks
+## Development
 
 ```bash
 ./gradlew build
+./gradlew test
 ./gradlew publishToMavenLocal
 ./gradlew releaseQualityGate
 ```
 
-`releaseQualityGate` verifies OSS metadata, reproducible archive settings, local
-quality gates and GitHub security scanning wiring.
+`releaseQualityGate` verifies OSS metadata, reproducible archive settings,
+local quality gates, and GitHub security scanning wiring.
 
-## Modules
+## Project Status
 
-- `jspecify-core` - shared issue, report, config, inventory and rewrite models.
-- `jspecify-rewrite-recipes` - OpenRewrite recipe catalog.
-- `jspecify-cli` - `jml jspecify ...` command line surface.
-- `jspecify-gradle-plugin` - Gradle plugin `io.github.javamodernizationlabs.jspecify-migration`.
-- `jspecify-maven-plugin` - Maven goals for plan, rewrite, coverage, NullAway and Kotlin verification.
+Current development version: `0.1.0-SNAPSHOT`.
+
+The kit is aimed at early adopters and library maintainers who want a practical
+JSpecify migration workflow before enforcing strict nullness gates everywhere.
+Expect the command surface to stabilize around the first tagged `0.1.x` release.
+
+## Contributing
+
+Contributions are welcome through focused pull requests:
+
+- Keep migrations observable: every automated change should have a report or dry-run path.
+- Prefer safe defaults: flag ambiguous type-use semantics instead of guessing.
+- Keep CI output machine-readable: SARIF, JSON, and JUnit XML are part of the product.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md),
+and [SECURITY.md](SECURITY.md).
 
 ## License
 
