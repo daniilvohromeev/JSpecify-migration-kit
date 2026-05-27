@@ -1,0 +1,38 @@
+package io.github.javamodernizationlabs.jspecify.gradle;
+
+import io.github.javamodernizationlabs.jspecify.AnnotationInventory;
+import io.github.javamodernizationlabs.jspecify.MigrationPlan;
+import io.github.javamodernizationlabs.jspecify.MigrationPlanner;
+import io.github.javamodernizationlabs.jspecify.ProjectModel;
+import io.github.javamodernizationlabs.jspecify.report.ConsoleReportWriter;
+import io.github.javamodernizationlabs.jspecify.report.JsonReportWriter;
+import io.github.javamodernizationlabs.jspecify.report.MarkdownReportWriter;
+import io.github.javamodernizationlabs.jspecify.report.SarifReportWriter;
+import io.github.javamodernizationlabs.jspecify.scan.AnnotationScanner;
+import org.gradle.api.DefaultTask;
+import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.tasks.OutputDirectory;
+import org.gradle.api.tasks.TaskAction;
+
+import java.io.IOException;
+
+public abstract class JspecifyPlanTask extends DefaultTask {
+
+    @OutputDirectory
+    public abstract DirectoryProperty getOutputDirectory();
+
+    @TaskAction
+    public void run() throws IOException {
+        ProjectModel model = ProjectModel.of(getProject().getProjectDir().toPath());
+        AnnotationInventory inventory = new AnnotationScanner().scan(model);
+        MigrationPlan plan = new MigrationPlanner().plan(inventory);
+
+        new ConsoleReportWriter().write(System.out, plan);
+
+        var output = getOutputDirectory().getAsFile().get().toPath();
+        new JsonReportWriter().write(output.resolve("plan.json"), plan);
+        new MarkdownReportWriter().write(output.resolve("plan.md"), plan);
+        new SarifReportWriter().write(output.resolve("plan.sarif"), plan);
+        getLogger().lifecycle("JSpecify reports written to {}", output);
+    }
+}
