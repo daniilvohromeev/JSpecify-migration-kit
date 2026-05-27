@@ -4,6 +4,8 @@ import io.github.javamodernizationlabs.jspecify.AnnotationInventory;
 import io.github.javamodernizationlabs.jspecify.MigrationPlan;
 import io.github.javamodernizationlabs.jspecify.MigrationPlanner;
 import io.github.javamodernizationlabs.jspecify.ProjectModel;
+import io.github.javamodernizationlabs.jspecify.Severity;
+import io.github.javamodernizationlabs.jspecify.baseline.BaselineStore;
 import io.github.javamodernizationlabs.jspecify.config.JspecifyConfig;
 import io.github.javamodernizationlabs.jspecify.config.JspecifyConfigLoader;
 import io.github.javamodernizationlabs.jspecify.report.ConsoleReportWriter;
@@ -39,6 +41,19 @@ public class PlanCommand implements Callable<Integer> {
             description = "Directory for non-console reports")
     Path outputDir;
 
+    @Option(names = {"--baseline"}, description = "Existing baseline file for CI gating")
+    Path baseline;
+
+    @Option(names = {"--baseline-write"}, description = "Write current issue fingerprints")
+    Path baselineWrite;
+
+    @Option(names = {"--fail-on"}, description = "Fail on new issues at or above severity",
+            defaultValue = "high")
+    String failOn;
+
+    @Option(names = {"--allow-new-issues"}, description = "Do not fail on new issues")
+    boolean allowNewIssues;
+
     @Override
     public Integer call() throws Exception {
         Path projectRoot = project.toAbsolutePath().normalize();
@@ -54,6 +69,10 @@ public class PlanCommand implements Callable<Integer> {
         Path effectiveOutputDir = outputDir == null
                 ? config.resolveReportsOutputDirectory(projectRoot)
                 : outputDir.toAbsolutePath().normalize();
+        BaselineStore baselineStore = new BaselineStore();
+        if (baselineWrite != null) {
+            baselineStore.write(baselineWrite.toAbsolutePath().normalize(), plan.issues());
+        }
 
         for (String format : effectiveFormats) {
             switch (format.trim().toLowerCase()) {
@@ -71,6 +90,14 @@ public class PlanCommand implements Callable<Integer> {
                 default -> System.err.println("Unknown format: " + format);
             }
         }
-        return 0;
+        if (allowNewIssues || baseline == null) {
+            return 0;
+        }
+        Severity threshold = Severity.parse(failOn);
+        boolean hasFailingNewIssues = baselineStore
+                .newIssues(plan.issues(), baseline.toAbsolutePath().normalize())
+                .stream()
+                .anyMatch(issue -> issue.severity().atLeast(threshold));
+        return hasFailingNewIssues ? 1 : 0;
     }
 }

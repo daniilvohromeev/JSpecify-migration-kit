@@ -63,4 +63,46 @@ class JspecifyRewriterTest {
         assertEquals(1, result.changedFiles());
         assertTrue(Files.readString(build).contains("compileOnly(\"org.jspecify:jspecify:1.0.0\")"));
     }
+
+    @Test
+    void addsNullMarkedPackageInfo(@TempDir Path tmp) throws IOException {
+        Path source = tmp.resolve("src/main/java/com/acme/Api.java");
+        Files.createDirectories(source.getParent());
+        Files.writeString(source, "package com.acme; public class Api {}\n");
+
+        RewriteResult result = new JspecifyRewriter()
+                .rewrite(ProjectModel.of(tmp), List.of("add-null-marked"), true);
+
+        Path packageInfo = tmp.resolve("src/main/java/com/acme/package-info.java");
+        assertEquals(1, result.changedFiles());
+        assertTrue(Files.readString(packageInfo).contains("@NullMarked"));
+    }
+
+    @Test
+    void removesOldGradleAnnotationDependenciesWhenUsagesAreGone(@TempDir Path tmp)
+            throws IOException {
+        Path build = tmp.resolve("build.gradle.kts");
+        Files.writeString(build,
+                """
+                dependencies {
+                    compileOnly("org.jetbrains:annotations:26.0.1")
+                    compileOnly("org.jspecify:jspecify:1.0.0")
+                }
+                """);
+        Path source = tmp.resolve("src/main/java/com/acme/Api.java");
+        Files.createDirectories(source.getParent());
+        Files.writeString(source,
+                """
+                package com.acme;
+                import org.jspecify.annotations.Nullable;
+                class Api { @Nullable String name() { return null; } }
+                """);
+
+        RewriteResult result = new JspecifyRewriter()
+                .rewrite(ProjectModel.of(tmp),
+                        List.of("remove-old-annotation-dependencies"), true);
+
+        assertEquals(1, result.changedFiles());
+        assertTrue(!Files.readString(build).contains("org.jetbrains:annotations"));
+    }
 }

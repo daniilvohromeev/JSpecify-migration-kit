@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -47,6 +48,12 @@ public final class JspecifyRewriter {
         if (recipes.contains("convert-known-annotations")) {
             convertKnownAnnotations(project, apply, changes, warnings);
         }
+        if (recipes.contains("add-null-marked")) {
+            addNullMarked(project, apply, changes, warnings);
+        }
+        if (recipes.contains("remove-old-annotation-dependencies")) {
+            removeOldAnnotationDependencies(project, apply, changes, warnings);
+        }
         return new RewriteResult(apply, changes, warnings);
     }
 
@@ -70,6 +77,12 @@ public final class JspecifyRewriter {
                 } else if (normalized.endsWith(".convertknownannotations")
                         || normalized.equals("convert-known-annotations")) {
                     recipes.add("convert-known-annotations");
+                } else if (normalized.endsWith(".addnullmarkedtopackage")
+                        || normalized.equals("add-null-marked")) {
+                    recipes.add("add-null-marked");
+                } else if (normalized.endsWith(".removeoldannotationdependencies")
+                        || normalized.equals("remove-old-annotation-dependencies")) {
+                    recipes.add("remove-old-annotation-dependencies");
                 } else {
                     recipes.add(normalized);
                 }
@@ -222,5 +235,137 @@ public final class JspecifyRewriter {
             count++;
         }
         return count;
+    }
+
+    private void addNullMarked(ProjectModel project,
+                               boolean apply,
+                               List<RewriteChange> changes,
+                               List<String> warnings) throws IOException {
+        Map<String, Path> packages = discoverPackages(project);
+        for (var entry : packages.entrySet()) {
+            String packageName = entry.getKey();
+            Path packageDirectory = entry.getValue();
+            Path packageInfo = packageDirectory.resolve("package-info.java");
+            if (Files.isRegularFile(packageInfo)) {
+                String content = Files.readString(packageInfo, StandardCharsets.UTF_8);
+                if (content.contains("@NullMarked")
+                        || content.contains("@" + AnnotationCatalog.JSPECIFY_NULL_MARKED)) {
+                    continue;
+                }
+                List<String> unsafe = unsafeWarnings(packageInfo, content);
+                if (!unsafe.isEmpty()) {
+                    warnings.addAll(unsafe);
+                    continue;
+                }
+                String updated = content.replaceFirst("package\\s+" + Pattern.quote(packageName)
+                                + "\\s*;",
+                        "@NullMarked\npackage " + packageName
+                                + ";\n\nimport org.jspecify.annotations.NullMarked;");
+                if (apply) {
+                    Files.writeString(packageInfo, updated, StandardCharsets.UTF_8);
+                }
+                changes.add(new RewriteChange(packageInfo, "Add package-level @NullMarked",
+                        1, List.of()));
+            } else {
+                String created = "@NullMarked\npackage " + packageName
+                        + ";\n\nimport org.jspecify.annotations.NullMarked;\n";
+                if (apply) {
+                    Files.writeString(packageInfo, created, StandardCharsets.UTF_8);
+                }
+                changes.add(new RewriteChange(packageInfo, "Create package-info.java with @NullMarked",
+                        1, List.of()));
+            }
+        }
+    }
+
+    private Map<String, Path> discoverPackages(ProjectModel project) throws IOException {
+        Map<String, Path> packages = new java.util.LinkedHashMap<>();
+        for (Path root : project.sourceRoots()) {
+            if (!Files.isDirectory(root)) {
+                continue;
+            }
+            try (Stream<Path> stream = Files.walk(root)) {
+                Iterable<Path> files = stream
+                        .filter(Files::isRegularFile)
+                        .filter(p -> p.toString().endsWith(".java"))
+                        ::iterator;
+                for (Path file : files) {
+                    String content = Files.readString(file, StandardCharsets.UTF_8);
+                    var matcher = Pattern.compile("(?m)^\\s*package\\s+([\\w.]+)\\s*;")
+                            .matcher(content);
+                    if (matcher.find()) {
+                        packages.putIfAbsent(matcher.group(1), file.getParent());
+                    }
+                }
+            }
+        }
+        return packages;
+    }
+
+    private void removeOldAnnotationDependencies(ProjectModel project,
+                                                 boolean apply,
+                                                 List<RewriteChange> changes,
+                                                 List<String> warnings) throws IOException {
+        if (hasLegacyAnnotationUsages(project)) {
+            warnings.add("Old annotation dependencies were not removed because legacy usages remain.");
+            return;
+        }
+        Path gradleKts = project.rootDirectory().resolve("build.gradle.kts");
+        if (Files.isRegularFile(gradleKts)) {
+            removeGradleLegacyDependencies(gradleKts, apply, changes);
+        }
+        Path pom = project.rootDirectory().resolve("pom.xml");
+        if (Files.isRegularFile(pom)) {
+            warnings.add("Maven dependency cleanup requires model-aware XML editing and was skipped.");
+        }
+    }
+
+    private boolean hasLegacyAnnotationUsages(ProjectModel project) throws IOException {
+        for (Path root : project.sourceRoots()) {
+            if (!Files.isDirectory(root)) {
+                continue;
+            }
+            try (Stream<Path> stream = Files.walk(root)) {
+                Iterable<Path> files = stream
+                        .filter(Files::isRegularFile)
+                        .filter(p -> p.toString().endsWith(".java"))
+                        ::iterator;
+                for (Path file : files) {
+                    String content = Files.readString(file, StandardCharsets.UTF_8);
+                    for (String legacy : catalog.knownLegacyAnnotations()) {
+                        if (content.contains(legacy)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private void removeGradleLegacyDependencies(Path buildFile,
+                                                boolean apply,
+                                                List<RewriteChange> changes) throws IOException {
+        List<String> lines = Files.readAllLines(buildFile, StandardCharsets.UTF_8);
+        List<String> kept = new ArrayList<>();
+        int removed = 0;
+        for (String line : lines) {
+            if (line.contains("org.jetbrains:annotations")
+                    || line.contains("com.google.code.findbugs:jsr305")
+                    || line.contains("javax.annotation:javax.annotation-api")
+                    || line.contains("jakarta.annotation:jakarta.annotation-api")) {
+                removed++;
+            } else {
+                kept.add(line);
+            }
+        }
+        if (removed > 0) {
+            if (apply) {
+                Files.writeString(buildFile, String.join(System.lineSeparator(), kept)
+                        + System.lineSeparator(), StandardCharsets.UTF_8);
+            }
+            changes.add(new RewriteChange(buildFile, "Remove legacy annotation dependencies",
+                    removed, List.of()));
+        }
     }
 }

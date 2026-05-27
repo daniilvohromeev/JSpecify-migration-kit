@@ -39,6 +39,11 @@ class JspecifyConfigLoaderTest {
                       - "**/custom-generated/**"
                 sourceRoots:
                   - src/main/java
+                packagePolicy:
+                  markPackages:
+                    - "com.acme.api"
+                  leaveUnmarked:
+                    - "com.acme.legacy"
                 scanner:
                   followSymlinks: false
                 """);
@@ -52,6 +57,8 @@ class JspecifyConfigLoaderTest {
                 config.annotationMappings().get("com.acme.Nullable"));
         assertTrue(config.generatedCodeExcludes().contains("**/custom-generated/**"));
         assertEquals(List.of(Path.of("src/main/java")), config.sourceRoots());
+        assertEquals(List.of("com.acme.api"), config.markPackages());
+        assertEquals(List.of("com.acme.legacy"), config.leaveUnmarkedPackages());
         assertFalse(config.followSymlinks());
     }
 }

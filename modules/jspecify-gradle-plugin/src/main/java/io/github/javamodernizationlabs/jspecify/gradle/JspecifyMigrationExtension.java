@@ -1,6 +1,7 @@
 package io.github.javamodernizationlabs.jspecify.gradle;
 
 import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.Action;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
@@ -41,6 +42,22 @@ public abstract class JspecifyMigrationExtension {
 
     public ReportsSpec getReports() {
         return reports;
+    }
+
+    public void migration(Action<? super MigrationSpec> action) {
+        action.execute(migration);
+    }
+
+    public void nullaway(Action<? super NullAwaySpec> action) {
+        action.execute(nullaway);
+    }
+
+    public void kotlinVerification(Action<? super KotlinVerificationSpec> action) {
+        action.execute(kotlinVerification);
+    }
+
+    public void reports(Action<? super ReportsSpec> action) {
+        action.execute(reports);
     }
 
     public abstract static class MigrationSpec {

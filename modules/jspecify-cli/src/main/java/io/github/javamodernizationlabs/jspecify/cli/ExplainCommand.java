@@ -50,6 +50,45 @@ public class ExplainCommand implements Callable<Integer> {
             JSpecify is a type-use annotation system: @Nullable List<String> means a
             nullable list, not a list of nullable strings. Migrating a declaration-only
             legacy annotation requires deciding the intended placement manually.
+            """,
+            "jspecify.package-conflicting-defaults",
+            """
+            Rule: jspecify.package-conflicting-defaults
+            Severity: HIGH
+
+            Why it matters:
+            Package-level defaults such as @NonNullApi or @ParametersAreNonnullByDefault
+            may not map cleanly to JSpecify @NullMarked semantics. Resolve the package
+            policy manually before adding @NullMarked.
+            """,
+            "jspecify.kotlin-platform-type-leak",
+            """
+            Rule: jspecify.kotlin-platform-type-leak
+            Severity: MEDIUM
+
+            Why it matters:
+            Kotlin callers see platform types when Java public API lacks an effective
+            nullness contract. Add package-level @NullMarked or explicit type-use
+            annotations to public API.
+            """,
+            "jspecify.nullaway-error",
+            """
+            Rule: jspecify.nullaway-error
+            Severity: HIGH
+
+            Why it matters:
+            NullAway found a nullness violation after JSpecify migration. Fix the code,
+            adjust the annotation contract, or baseline known legacy issues before
+            enabling strict CI gates.
+            """,
+            "jspecify.generated-code-annotation",
+            """
+            Rule: jspecify.generated-code-annotation
+            Severity: LOW
+
+            Why it matters:
+            Generated sources should usually be excluded from manual annotation edits.
+            Configure generated-code excludes and prefer fixing the generator template.
             """
     );
 

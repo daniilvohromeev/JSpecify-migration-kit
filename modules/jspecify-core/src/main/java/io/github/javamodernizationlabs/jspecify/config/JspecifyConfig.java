@@ -13,6 +13,8 @@ public record JspecifyConfig(
         Path reportsOutputDirectory,
         List<String> generatedCodeExcludes,
         List<Path> sourceRoots,
+        List<String> markPackages,
+        List<String> leaveUnmarkedPackages,
         boolean followSymlinks
 ) {
     public JspecifyConfig {
@@ -30,6 +32,10 @@ public record JspecifyConfig(
                 ? defaultGeneratedCodeExcludes()
                 : List.copyOf(generatedCodeExcludes);
         sourceRoots = sourceRoots == null ? List.of() : List.copyOf(sourceRoots);
+        markPackages = markPackages == null ? List.of() : List.copyOf(markPackages);
+        leaveUnmarkedPackages = leaveUnmarkedPackages == null
+                ? List.of()
+                : List.copyOf(leaveUnmarkedPackages);
     }
 
     public static JspecifyConfig defaults() {
@@ -39,6 +45,8 @@ public record JspecifyConfig(
                 List.of("console", "html", "markdown", "sarif", "json"),
                 Path.of("build/reports/jml/jspecify"),
                 defaultGeneratedCodeExcludes(),
+                List.of(),
+                List.of(),
                 List.of(),
                 false);
     }

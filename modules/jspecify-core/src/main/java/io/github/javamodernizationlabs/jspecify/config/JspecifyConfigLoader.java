@@ -66,6 +66,10 @@ public final class JspecifyConfigLoader {
                     builder.generatedCodeExcludes.add(value);
                 } else if (listTarget.equals("sourceRoots")) {
                     builder.sourceRoots.add(Path.of(value));
+                } else if (listTarget.equals("packagePolicy.markPackages")) {
+                    builder.markPackages.add(value);
+                } else if (listTarget.equals("packagePolicy.leaveUnmarked")) {
+                    builder.leaveUnmarkedPackages.add(value);
                 }
                 continue;
             }
@@ -168,11 +172,14 @@ public final class JspecifyConfigLoader {
                 List.of("**/generated/**", "**/target/generated-sources/**",
                         "**/build/generated/**"));
         private final List<Path> sourceRoots = new ArrayList<>();
+        private final List<String> markPackages = new ArrayList<>();
+        private final List<String> leaveUnmarkedPackages = new ArrayList<>();
         private boolean followSymlinks;
 
         private JspecifyConfig build() {
             return new JspecifyConfig(jspecifyVersion, annotationMappings, reportFormats,
-                    reportsOutputDirectory, generatedCodeExcludes, sourceRoots, followSymlinks);
+                    reportsOutputDirectory, generatedCodeExcludes, sourceRoots,
+                    markPackages, leaveUnmarkedPackages, followSymlinks);
         }
     }
 }
