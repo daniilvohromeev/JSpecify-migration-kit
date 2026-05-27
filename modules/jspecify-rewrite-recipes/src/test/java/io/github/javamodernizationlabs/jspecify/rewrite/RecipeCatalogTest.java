@@ -17,6 +17,7 @@ class RecipeCatalogTest {
             assertTrue(catalog.contains("io.github.jml.jspecify.SpringPreset"));
             assertTrue(catalog.contains("io.github.jml.jspecify.ReactorPreset"));
             assertTrue(catalog.contains("io.github.jml.jspecify.MicrometerPreset"));
+            assertTrue(catalog.contains("io.github.jml.jspecify.FixTypeUseAnnotationPlacement"));
             assertTrue(catalog.contains("@io.micrometer.common.lang.NonNullApi"));
         }
     }

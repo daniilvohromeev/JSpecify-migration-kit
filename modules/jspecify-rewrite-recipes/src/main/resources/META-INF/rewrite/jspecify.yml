@@ -87,10 +87,25 @@ recipeList:
   - io.github.jml.jspecify.ConvertKnownAnnotations
 ---
 type: specs.openrewrite.org/v1beta/recipe
+name: io.github.jml.jspecify.FixTypeUseAnnotationPlacement
+displayName: Find ambiguous type-use nullness placements
+description: Finds legacy nullable container annotations that require manual container-vs-element review.
+recipeList:
+  - org.openrewrite.java.search.FindAnnotations:
+      annotationPattern: "@org.jetbrains.annotations.Nullable"
+  - org.openrewrite.java.search.FindAnnotations:
+      annotationPattern: "@javax.annotation.Nullable"
+  - org.openrewrite.java.search.FindAnnotations:
+      annotationPattern: "@jakarta.annotation.Nullable"
+  - org.openrewrite.java.search.FindAnnotations:
+      annotationPattern: "@org.springframework.lang.Nullable"
+---
+type: specs.openrewrite.org/v1beta/recipe
 name: io.github.jml.jspecify.Migrate
 displayName: Full JSpecify migration (safe defaults)
 description: Adds the JSpecify dependency, marks unsafe defaults for review and converts known nullness annotations.
 recipeList:
   - io.github.jml.jspecify.AddJSpecifyDependency
   - io.github.jml.jspecify.FindUnsafeNullnessDefaults
+  - io.github.jml.jspecify.FixTypeUseAnnotationPlacement
   - io.github.jml.jspecify.ConvertKnownAnnotations

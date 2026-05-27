@@ -15,6 +15,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
 public final class JspecifyRewriter {
 
@@ -25,6 +30,8 @@ public final class JspecifyRewriter {
             "TypeQualifierDefault",
             "DefaultAnnotation",
             "DefaultQualifier");
+    private static final Pattern AMBIGUOUS_TYPE_USE = Pattern.compile(
+            "@(?:[\\w.]+\\.)?Nullable\\s+[\\w.]+\\s*<[^>]+>");
 
     private final AnnotationCatalog catalog;
 
@@ -54,6 +61,9 @@ public final class JspecifyRewriter {
         if (recipes.contains("remove-old-annotation-dependencies")) {
             removeOldAnnotationDependencies(project, apply, changes, warnings);
         }
+        if (recipes.contains("fix-type-use-annotation-placement")) {
+            reportAmbiguousTypeUse(project, warnings);
+        }
         return new RewriteResult(apply, changes, warnings);
     }
 
@@ -69,6 +79,7 @@ public final class JspecifyRewriter {
                 }
                 if (normalized.endsWith(".migrate") || normalized.equals("migrate")) {
                     recipes.add("add-dependency");
+                    recipes.add("fix-type-use-annotation-placement");
                     recipes.add("convert-known-annotations");
                 } else if (normalized.endsWith(".springpreset")
                         || normalized.endsWith(".reactorpreset")
@@ -90,6 +101,9 @@ public final class JspecifyRewriter {
                 } else if (normalized.endsWith(".removeoldannotationdependencies")
                         || normalized.equals("remove-old-annotation-dependencies")) {
                     recipes.add("remove-old-annotation-dependencies");
+                } else if (normalized.endsWith(".fixtypeuseannotationplacement")
+                        || normalized.equals("fix-type-use-annotation-placement")) {
+                    recipes.add("fix-type-use-annotation-placement");
                 } else {
                     recipes.add(normalized);
                 }
@@ -335,7 +349,7 @@ public final class JspecifyRewriter {
         }
         Path pom = project.rootDirectory().resolve("pom.xml");
         if (Files.isRegularFile(pom)) {
-            warnings.add("Maven dependency cleanup requires model-aware XML editing and was skipped.");
+            removeMavenLegacyDependencies(pom, apply, changes);
         }
     }
 
@@ -385,6 +399,92 @@ public final class JspecifyRewriter {
             }
             changes.add(new RewriteChange(buildFile, "Remove legacy annotation dependencies",
                     removed, List.of()));
+        }
+    }
+
+    private void removeMavenLegacyDependencies(Path pom,
+                                               boolean apply,
+                                               List<RewriteChange> changes) throws IOException {
+        try {
+            var factory = DocumentBuilderFactory.newInstance();
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            var document = factory.newDocumentBuilder().parse(pom.toFile());
+            var dependencies = document.getElementsByTagName("dependency");
+            List<org.w3c.dom.Node> toRemove = new ArrayList<>();
+            for (int i = 0; i < dependencies.getLength(); i++) {
+                org.w3c.dom.Node dependency = dependencies.item(i);
+                String groupId = childText(dependency, "groupId");
+                String artifactId = childText(dependency, "artifactId");
+                if (isLegacyAnnotationDependency(groupId, artifactId)) {
+                    toRemove.add(dependency);
+                }
+            }
+            if (toRemove.isEmpty()) {
+                return;
+            }
+            for (org.w3c.dom.Node dependency : toRemove) {
+                dependency.getParentNode().removeChild(dependency);
+            }
+            if (apply) {
+                var transformer = TransformerFactory.newInstance().newTransformer();
+                transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+                transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
+                transformer.transform(new DOMSource(document), new StreamResult(pom.toFile()));
+            }
+            changes.add(new RewriteChange(pom, "Remove legacy Maven annotation dependencies",
+                    toRemove.size(), List.of()));
+        } catch (Exception e) {
+            throw new IOException("Unable to remove Maven legacy annotation dependencies from "
+                    + pom, e);
+        }
+    }
+
+    private String childText(org.w3c.dom.Node node, String name) {
+        var children = node.getChildNodes();
+        for (int i = 0; i < children.getLength(); i++) {
+            org.w3c.dom.Node child = children.item(i);
+            if (child.getNodeType() == org.w3c.dom.Node.ELEMENT_NODE
+                    && child.getNodeName().equals(name)) {
+                return child.getTextContent().trim();
+            }
+        }
+        return "";
+    }
+
+    private boolean isLegacyAnnotationDependency(String groupId, String artifactId) {
+        return (groupId.equals("org.jetbrains") && artifactId.equals("annotations"))
+                || (groupId.equals("com.google.code.findbugs") && artifactId.equals("jsr305"))
+                || (groupId.equals("com.google.code.findbugs") && artifactId.equals("annotations"))
+                || (groupId.equals("javax.annotation") && artifactId.equals("javax.annotation-api"))
+                || (groupId.equals("jakarta.annotation") && artifactId.equals("jakarta.annotation-api"));
+    }
+
+    private void reportAmbiguousTypeUse(ProjectModel project, List<String> warnings)
+            throws IOException {
+        for (Path root : project.sourceRoots()) {
+            if (!Files.isDirectory(root)) {
+                continue;
+            }
+            try (Stream<Path> stream = Files.walk(root)) {
+                Iterable<Path> files = stream
+                        .filter(Files::isRegularFile)
+                        .filter(p -> p.toString().endsWith(".java"))
+                        ::iterator;
+                for (Path file : files) {
+                    List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+                    for (int i = 0; i < lines.size(); i++) {
+                        if (AMBIGUOUS_TYPE_USE.matcher(lines.get(i)).find()) {
+                            warnings.add(file + ":" + (i + 1)
+                                    + ": Ambiguous annotation migration: "
+                                    + lines.get(i).trim()
+                                    + " Possible meanings: nullable container or nullable element. "
+                                    + "Manual review required.");
+                        }
+                    }
+                }
+            }
         }
     }
 }
