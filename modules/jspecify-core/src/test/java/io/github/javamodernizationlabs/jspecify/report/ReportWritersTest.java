@@ -54,5 +54,13 @@ class ReportWritersTest {
         String sarif = new SarifReportWriter().render(plan);
         assertTrue(sarif.contains("\"version\":\"2.1.0\""));
         assertTrue(sarif.contains("jspecify.old-nullness-annotation"));
+
+        String html = new HtmlReportWriter().render(plan);
+        assertTrue(html.contains("<!doctype html>"));
+        assertTrue(html.contains("JSpecify Migration Report"));
+
+        String junit = new JunitXmlReportWriter().render(plan);
+        assertTrue(junit.contains("<testsuite name=\"jspecify-migration\""));
+        assertTrue(junit.contains("<testcase"));
     }
 }

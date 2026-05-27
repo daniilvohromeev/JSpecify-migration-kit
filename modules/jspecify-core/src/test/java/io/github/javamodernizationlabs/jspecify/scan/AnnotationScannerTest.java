@@ -57,4 +57,49 @@ class AnnotationScannerTest {
         AnnotationInventory inv = new AnnotationScanner().scan(ProjectModel.of(tmp));
         assertEquals(0, inv.totalAnnotations());
     }
+
+    @Test
+    void countsFullyQualifiedAndWildcardImportedAnnotations(@TempDir Path tmp) throws IOException {
+        Path mainJava = tmp.resolve("src/main/java/com/acme");
+        Files.createDirectories(mainJava);
+        Files.writeString(mainJava.resolve("Qualified.java"),
+                """
+                package com.acme;
+
+                import org.jetbrains.annotations.*;
+
+                public class Qualified {
+                    // @Nullable in a comment should not count
+                    @Nullable
+                    public String one() { return null; }
+
+                    public @javax.annotation.Nullable String two() { return null; }
+                }
+                """);
+
+        AnnotationInventory inv = new AnnotationScanner().scan(ProjectModel.of(tmp));
+
+        assertEquals(1,
+                inv.totalByAnnotation().get("org.jetbrains.annotations.Nullable"));
+        assertEquals(1,
+                inv.totalByAnnotation().get("javax.annotation.Nullable"));
+    }
+
+    @Test
+    void discoversNestedModuleSourceRoots(@TempDir Path tmp) throws IOException {
+        Path moduleJava = tmp.resolve("modules/foo/src/main/java/com/acme");
+        Files.createDirectories(moduleJava);
+        Files.writeString(moduleJava.resolve("Api.java"),
+                """
+                package com.acme;
+                import org.jetbrains.annotations.Nullable;
+                class Api { @Nullable String name() { return null; } }
+                """);
+
+        AnnotationInventory inv = new AnnotationScanner().scan(ProjectModel.of(tmp));
+
+        assertEquals(1,
+                inv.totalByAnnotation().get("org.jetbrains.annotations.Nullable"));
+        assertEquals(1, inv.filesScanned());
+    }
 }

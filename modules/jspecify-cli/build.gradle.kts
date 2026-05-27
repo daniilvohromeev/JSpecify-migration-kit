@@ -11,5 +11,5 @@ dependencies {
 
 application {
     mainClass.set("io.github.javamodernizationlabs.jspecify.cli.JspecifyCli")
-    applicationName = "jml-jspecify"
+    applicationName = "jml"
 }
