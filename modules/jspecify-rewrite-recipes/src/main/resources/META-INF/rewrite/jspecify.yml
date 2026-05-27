@@ -101,6 +101,42 @@ recipeList:
       annotationPattern: "@org.springframework.lang.Nullable"
 ---
 type: specs.openrewrite.org/v1beta/recipe
+name: io.github.jml.jspecify.RemoveOldAnnotationDependencies
+displayName: Remove legacy nullness annotation dependencies
+description: Removes known annotation-only dependencies after usages have been eliminated.
+recipeList:
+  - org.openrewrite.maven.RemoveDependency:
+      groupId: org.jetbrains
+      artifactId: annotations
+  - org.openrewrite.maven.RemoveDependency:
+      groupId: com.google.code.findbugs
+      artifactId: jsr305
+  - org.openrewrite.maven.RemoveDependency:
+      groupId: com.google.code.findbugs
+      artifactId: annotations
+  - org.openrewrite.maven.RemoveDependency:
+      groupId: javax.annotation
+      artifactId: javax.annotation-api
+  - org.openrewrite.maven.RemoveDependency:
+      groupId: jakarta.annotation
+      artifactId: jakarta.annotation-api
+  - org.openrewrite.gradle.RemoveDependency:
+      groupId: org.jetbrains
+      artifactId: annotations
+  - org.openrewrite.gradle.RemoveDependency:
+      groupId: com.google.code.findbugs
+      artifactId: jsr305
+  - org.openrewrite.gradle.RemoveDependency:
+      groupId: com.google.code.findbugs
+      artifactId: annotations
+  - org.openrewrite.gradle.RemoveDependency:
+      groupId: javax.annotation
+      artifactId: javax.annotation-api
+  - org.openrewrite.gradle.RemoveDependency:
+      groupId: jakarta.annotation
+      artifactId: jakarta.annotation-api
+---
+type: specs.openrewrite.org/v1beta/recipe
 name: io.github.jml.jspecify.Migrate
 displayName: Full JSpecify migration (safe defaults)
 description: Adds the JSpecify dependency, marks unsafe defaults for review and converts known nullness annotations.

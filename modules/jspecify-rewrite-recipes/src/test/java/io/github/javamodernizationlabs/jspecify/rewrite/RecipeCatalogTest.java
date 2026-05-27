@@ -18,6 +18,9 @@ class RecipeCatalogTest {
             assertTrue(catalog.contains("io.github.jml.jspecify.ReactorPreset"));
             assertTrue(catalog.contains("io.github.jml.jspecify.MicrometerPreset"));
             assertTrue(catalog.contains("io.github.jml.jspecify.FixTypeUseAnnotationPlacement"));
+            assertTrue(catalog.contains("io.github.jml.jspecify.RemoveOldAnnotationDependencies"));
+            assertTrue(catalog.contains("org.openrewrite.maven.RemoveDependency"));
+            assertTrue(catalog.contains("org.openrewrite.gradle.RemoveDependency"));
             assertTrue(catalog.contains("@io.micrometer.common.lang.NonNullApi"));
         }
     }
