@@ -1,0 +1,7 @@
+{
+  "aliases": {
+    "jml": {
+      "script-ref": "io.github.javamodernizationlabs:jml-cli:0.1.0"
+    }
+  }
+}

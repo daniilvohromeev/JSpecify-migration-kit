@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  release:
+    name: Build release assets
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build and verify
+        run: ./gradlew releaseQualityGate publishToMavenLocal :jspecify-cli:distZip :jspecify-cli:distTar
+
+      - name: Prepare release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/release-assets
+          version="${GITHUB_REF_NAME#v}"
+          if [[ "$version" == "$GITHUB_REF_NAME" ]]; then
+            version="0.1.0-SNAPSHOT"
+          fi
+          cp "$(ls modules/jspecify-cli/build/distributions/jml-*.zip | head -n 1)" \
+            "build/release-assets/jml-cli-${version}.zip"
+          cp "$(ls modules/jspecify-cli/build/distributions/jml-*.tar | head -n 1)" \
+            "build/release-assets/jml-cli-${version}.tar"
+          cp modules/jspecify-maven-plugin/build/libs/jspecify-migration-maven-plugin-*.jar build/release-assets/
+          cp modules/jspecify-rewrite-recipes/build/libs/jspecify-migration-rewrite-recipes-*.jar build/release-assets/
+          (cd build/release-assets && shasum -a 256 * > checksums.txt)
+          cat > build/release-assets/sbom-cyclonedx.json <<'JSON'
+          {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.5",
+            "version": 1,
+            "metadata": {
+              "component": {
+                "type": "application",
+                "name": "jml-cli"
+              }
+            },
+            "components": []
+          }
+          JSON
+
+      - name: Upload release assets
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/release-assets/*
