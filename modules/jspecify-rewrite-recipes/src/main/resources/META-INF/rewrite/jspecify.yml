@@ -1,0 +1,49 @@
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: io.github.jml.jspecify.AddMavenDependency
+displayName: Add JSpecify dependency (Maven)
+description: Adds org.jspecify:jspecify as a provided-scope dependency.
+recipeList:
+  - org.openrewrite.maven.AddDependency:
+      groupId: org.jspecify
+      artifactId: jspecify
+      version: 1.0.0
+      scope: provided
+      releasesOnly: true
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: io.github.jml.jspecify.AddGradleDependency
+displayName: Add JSpecify dependency (Gradle)
+description: Adds org.jspecify:jspecify on the compileOnly configuration.
+recipeList:
+  - org.openrewrite.gradle.AddDependency:
+      groupId: org.jspecify
+      artifactId: jspecify
+      version: 1.0.0
+      configuration: compileOnly
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: io.github.jml.jspecify.AddJSpecifyDependency
+displayName: Add JSpecify dependency
+description: Adds the JSpecify dependency to either Maven or Gradle builds.
+recipeList:
+  - io.github.jml.jspecify.AddMavenDependency
+  - io.github.jml.jspecify.AddGradleDependency
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: io.github.jml.jspecify.ConvertKnownAnnotations
+displayName: Convert known nullness annotations to JSpecify
+description: |
+  Rewrites well-known legacy nullness annotations (JetBrains, JSR-305,
+  Spring, FindBugs, Checker Framework, RxJava, Reactor, Android, Lombok)
+  to their JSpecify counterparts.
+recipeList:
+  - io.github.javamodernizationlabs.jspecify.rewrite.ConvertKnownAnnotations
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: io.github.jml.jspecify.Migrate
+displayName: Full JSpecify migration (safe defaults)
+description: Adds the JSpecify dependency and converts known nullness annotations.
+recipeList:
+  - io.github.jml.jspecify.AddJSpecifyDependency
+  - io.github.jml.jspecify.ConvertKnownAnnotations
