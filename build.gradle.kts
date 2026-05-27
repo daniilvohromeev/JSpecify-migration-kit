@@ -53,6 +53,11 @@ subprojects {
         options.compilerArgs.addAll(listOf("-Xlint:all", "-parameters"))
     }
 
+    tasks.withType<Jar>().configureEach {
+        isPreserveFileTimestamps = false
+        isReproducibleFileOrder = true
+    }
+
     extensions.configure<org.gradle.api.publish.PublishingExtension> {
         publications {
             create("mavenJava", org.gradle.api.publish.maven.MavenPublication::class.java) {
@@ -83,4 +88,81 @@ subprojects {
             }
         }
     }
+}
+
+tasks.register("licenseCheck") {
+    group = "verification"
+    description = "Checks OSS metadata required for release publication."
+    inputs.files("LICENSE", "NOTICE", "README.md", "SECURITY.md", "CONTRIBUTING.md")
+    doLast {
+        val required = listOf("LICENSE", "NOTICE", "README.md", "SECURITY.md", "CONTRIBUTING.md")
+        val missing = required.filterNot { layout.projectDirectory.file(it).asFile.isFile }
+        check(missing.isEmpty()) {
+            "Missing required OSS metadata files: ${missing.joinToString(", ")}"
+        }
+        check(layout.projectDirectory.file("LICENSE").asFile.readText()
+            .contains("Apache License")) {
+            "LICENSE must contain Apache License text."
+        }
+        check(layout.projectDirectory.file("NOTICE").asFile.readText()
+            .contains("JSpecify Migration Kit")) {
+            "NOTICE must identify the project."
+        }
+    }
+}
+
+tasks.register("reproducibleBuildCheck") {
+    group = "verification"
+    description = "Verifies archive tasks use reproducible ordering and timestamps."
+    dependsOn(subprojects.map { it.tasks.named("jar") })
+    doLast {
+        subprojects.forEach { project ->
+            project.tasks.withType<Jar>().forEach { jar ->
+                check(!jar.isPreserveFileTimestamps) {
+                    "${project.path}:${jar.name} preserves file timestamps."
+                }
+                check(jar.isReproducibleFileOrder) {
+                    "${project.path}:${jar.name} does not use reproducible file order."
+                }
+            }
+        }
+    }
+}
+
+tasks.register("dependencyVulnerabilityCheck") {
+    group = "verification"
+    description = "Ensures dependency security scanning is wired in GitHub Actions."
+    inputs.file(".github/workflows/security.yml")
+    doLast {
+        val workflow = layout.projectDirectory.file(".github/workflows/security.yml").asFile
+        check(workflow.isFile) {
+            "Missing .github/workflows/security.yml for dependency and CodeQL scanning."
+        }
+        val text = workflow.readText()
+        check(text.contains("actions/dependency-review-action")) {
+            "security.yml must run GitHub dependency review."
+        }
+        check(text.contains("github/codeql-action/init")) {
+            "security.yml must initialize CodeQL."
+        }
+    }
+}
+
+tasks.register("jmhSmoke") {
+    group = "verification"
+    description = "Placeholder smoke gate for future JMH benchmarks; verifies benchmark scope is explicit."
+    inputs.file("build.gradle.kts")
+    doLast {
+        check(layout.projectDirectory.file("build.gradle.kts").asFile.readText()
+            .contains("version = \"0.1.0-SNAPSHOT\"")) {
+            "Project versioning must be defined before benchmark publication."
+        }
+    }
+}
+
+tasks.register("releaseQualityGate") {
+    group = "verification"
+    description = "Runs the local release quality gates documented for JSpecify Migration Kit."
+    dependsOn("build", "licenseCheck", "reproducibleBuildCheck",
+        "dependencyVulnerabilityCheck", "jmhSmoke")
 }

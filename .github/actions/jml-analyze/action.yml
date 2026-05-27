@@ -1,0 +1,68 @@
+name: JML Analyze
+description: Runs Java Modernization Labs analysis for JSpecify projects.
+
+inputs:
+  tools:
+    description: Comma-separated tool list. This repository currently supports jspecify.
+    required: false
+    default: jspecify
+  project:
+    description: Project directory to analyze.
+    required: false
+    default: .
+  fail-on:
+    description: Severity threshold for baseline-gated runs.
+    required: false
+    default: high
+  baseline:
+    description: Optional baseline JSON path.
+    required: false
+    default: ""
+  sarif-upload:
+    description: Upload SARIF when true.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: "21"
+        cache: gradle
+
+    - name: Set up Gradle
+      uses: gradle/actions/setup-gradle@v4
+
+    - name: Install JML CLI
+      shell: bash
+      run: ./gradlew :jspecify-cli:installDist
+
+    - name: Run JSpecify analysis
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [[ ",${{ inputs.tools }}," != *",jspecify,"* ]]; then
+          echo "No supported tools requested: ${{ inputs.tools }}"
+          exit 0
+        fi
+        cmd=(modules/jspecify-cli/build/install/jml/bin/jml jspecify plan
+          --project "${{ inputs.project }}"
+          --format json,sarif,html,junit
+          --output-dir build/reports/jml/jspecify
+          --fail-on "${{ inputs.fail-on }}")
+        if [[ -n "${{ inputs.baseline }}" ]]; then
+          cmd+=(--baseline "${{ inputs.baseline }}")
+        else
+          cmd+=(--allow-new-issues)
+        fi
+        "${cmd[@]}"
+
+    - name: Upload SARIF
+      if: ${{ inputs.sarif-upload == 'true' }}
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: build/reports/jml/jspecify/plan.sarif
+
