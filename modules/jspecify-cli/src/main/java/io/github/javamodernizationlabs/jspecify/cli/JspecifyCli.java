@@ -31,6 +31,9 @@ public class JspecifyCli implements Runnable {
             subcommands = {
                     PlanCommand.class,
                     RewriteCommand.class,
+                    CoverageCommand.class,
+                    NullAwayConfigCommand.class,
+                    VerifyKotlinCommand.class,
                     ReportCommand.class,
                     ExplainCommand.class
             }

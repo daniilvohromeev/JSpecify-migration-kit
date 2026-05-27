@@ -9,10 +9,17 @@ public class RewriteHintMojo extends AbstractMojo {
 
     @Parameter(property = "jspecify.recipe",
             defaultValue = "io.github.jml.jspecify.Migrate")
-    private String recipe;
+    private String recipe = "io.github.jml.jspecify.Migrate";
 
     @Parameter(property = "jspecify.apply", defaultValue = "false")
     private boolean apply;
+
+    public RewriteHintMojo() {
+    }
+
+    protected RewriteHintMojo(boolean apply) {
+        this.apply = apply;
+    }
 
     @Override
     public void execute() {

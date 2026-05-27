@@ -15,7 +15,8 @@ class JspecifyMigrationPluginTest {
 
         for (String taskName : new String[] {
                 "jspecifyPlan", "jspecifyReport",
-                "jspecifyRewriteDryRun", "jspecifyRewriteApply"
+                "jspecifyRewriteDryRun", "jspecifyRewriteApply",
+                "jspecifyCoverage", "jspecifyNullAwayCheck", "jspecifyVerifyKotlin"
         }) {
             assertNotNull(project.getTasks().findByName(taskName),
                     "Expected task missing: " + taskName);
