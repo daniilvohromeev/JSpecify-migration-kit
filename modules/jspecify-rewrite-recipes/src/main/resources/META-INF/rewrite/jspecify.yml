@@ -63,6 +63,13 @@ recipeList:
       annotationPattern: "@javax.annotation.meta.TypeQualifierDefault"
 ---
 type: specs.openrewrite.org/v1beta/recipe
+name: io.github.jml.jspecify.AddNullMarkedToPackage
+displayName: Add package-level JSpecify NullMarked
+description: Creates or updates package-info.java with package-level @NullMarked.
+recipeList:
+  - io.github.javamodernizationlabs.jspecify.rewrite.AddNullMarkedToPackage
+---
+type: specs.openrewrite.org/v1beta/recipe
 name: io.github.jml.jspecify.SpringPreset
 displayName: Spring JSpecify migration preset
 description: Converts Spring nullness annotations and marks Spring package defaults for review.

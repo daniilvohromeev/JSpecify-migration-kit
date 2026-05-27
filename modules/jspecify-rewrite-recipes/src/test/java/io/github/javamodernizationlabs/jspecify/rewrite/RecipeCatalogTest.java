@@ -14,6 +14,7 @@ class RecipeCatalogTest {
         try (var in = getClass().getResourceAsStream("/META-INF/rewrite/jspecify.yml")) {
             assertNotNull(in);
             String catalog = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            assertTrue(catalog.contains("io.github.jml.jspecify.AddNullMarkedToPackage"));
             assertTrue(catalog.contains("io.github.jml.jspecify.SpringPreset"));
             assertTrue(catalog.contains("io.github.jml.jspecify.ReactorPreset"));
             assertTrue(catalog.contains("io.github.jml.jspecify.MicrometerPreset"));
