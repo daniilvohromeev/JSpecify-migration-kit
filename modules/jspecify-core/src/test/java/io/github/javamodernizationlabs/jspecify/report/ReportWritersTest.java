@@ -6,6 +6,7 @@ import io.github.javamodernizationlabs.jspecify.Location;
 import io.github.javamodernizationlabs.jspecify.MigrationPlan;
 import io.github.javamodernizationlabs.jspecify.Recommendation;
 import io.github.javamodernizationlabs.jspecify.Severity;
+import io.github.javamodernizationlabs.jspecify.coverage.CoverageSummary;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
@@ -62,5 +63,19 @@ class ReportWritersTest {
         String junit = new JunitXmlReportWriter().render(plan);
         assertTrue(junit.contains("<testsuite name=\"jspecify-migration\""));
         assertTrue(junit.contains("<testcase"));
+    }
+
+    @Test
+    void coverageReportSupportsHtmlAndDetailedMetrics() {
+        var summary = new CoverageSummary(4, 3, 1, 2, 1,
+                2, 1, 3, 2, 2, 1, 1);
+
+        String markdown = new CoverageReportWriter().markdown(summary);
+        assertTrue(markdown.contains("Generic type-use coverage"));
+        assertTrue(markdown.contains("Kotlin interop warnings"));
+
+        String html = new CoverageReportWriter().html(summary);
+        assertTrue(html.contains("<!doctype html>"));
+        assertTrue(html.contains("JSpecify Coverage"));
     }
 }

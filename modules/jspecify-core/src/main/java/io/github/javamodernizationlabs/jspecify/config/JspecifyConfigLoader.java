@@ -70,6 +70,14 @@ public final class JspecifyConfigLoader {
                     builder.markPackages.add(value);
                 } else if (listTarget.equals("packagePolicy.leaveUnmarked")) {
                     builder.leaveUnmarkedPackages.add(value);
+                } else if (listTarget.equals("publicApi.include")) {
+                    builder.publicApiIncludes.add(value);
+                } else if (listTarget.equals("publicApi.exclude")) {
+                    builder.publicApiExcludes.add(value);
+                } else if (listTarget.equals("nullaway.annotatedPackages")) {
+                    builder.nullawayAnnotatedPackages.add(value);
+                } else if (listTarget.equals("nullaway.excludedClasses")) {
+                    builder.nullawayExcludedClasses.add(value);
                 }
                 continue;
             }
@@ -100,6 +108,18 @@ public final class JspecifyConfigLoader {
                 builder.reportsOutputDirectory = Path.of(unquote(value));
             } else if (dotted.equals("scanner.followSymlinks")) {
                 builder.followSymlinks = Boolean.parseBoolean(value.toLowerCase(Locale.ROOT));
+            } else if (dotted.equals("publicApi.jpmsExportsOnly")) {
+                builder.publicApiJpmsExportsOnly = Boolean.parseBoolean(value.toLowerCase(Locale.ROOT));
+            } else if (dotted.equals("nullaway.enabled")) {
+                builder.nullawayEnabled = Boolean.parseBoolean(value.toLowerCase(Locale.ROOT));
+            } else if (dotted.equals("nullaway.mode")) {
+                builder.nullawayMode = unquote(value);
+            } else if (dotted.equals("kotlinVerification.enabled")) {
+                builder.kotlinVerificationEnabled = Boolean.parseBoolean(value.toLowerCase(Locale.ROOT));
+            } else if (dotted.equals("kotlinVerification.failOnWarnings")) {
+                builder.kotlinVerificationFailOnWarnings = Boolean.parseBoolean(value.toLowerCase(Locale.ROOT));
+            } else if (dotted.equals("kotlinVerification.generatedTestsDirectory")) {
+                builder.kotlinVerificationGeneratedTestsDirectory = Path.of(unquote(value));
             } else if (dotted.startsWith("annotations.mappings.")) {
                 String annotation = dotted.substring("annotations.mappings.".length());
                 builder.annotationMappings.put(annotation, unquote(value));
@@ -174,12 +194,27 @@ public final class JspecifyConfigLoader {
         private final List<Path> sourceRoots = new ArrayList<>();
         private final List<String> markPackages = new ArrayList<>();
         private final List<String> leaveUnmarkedPackages = new ArrayList<>();
+        private final List<String> publicApiIncludes = new ArrayList<>();
+        private final List<String> publicApiExcludes = new ArrayList<>();
+        private boolean publicApiJpmsExportsOnly;
+        private boolean nullawayEnabled;
+        private String nullawayMode = "warn";
+        private final List<String> nullawayAnnotatedPackages = new ArrayList<>();
+        private final List<String> nullawayExcludedClasses = new ArrayList<>();
+        private boolean kotlinVerificationEnabled;
+        private boolean kotlinVerificationFailOnWarnings;
+        private Path kotlinVerificationGeneratedTestsDirectory =
+                Path.of("build/jspecify-kotlin-verification");
         private boolean followSymlinks;
 
         private JspecifyConfig build() {
             return new JspecifyConfig(jspecifyVersion, annotationMappings, reportFormats,
                     reportsOutputDirectory, generatedCodeExcludes, sourceRoots,
-                    markPackages, leaveUnmarkedPackages, followSymlinks);
+                    markPackages, leaveUnmarkedPackages, publicApiIncludes, publicApiExcludes,
+                    publicApiJpmsExportsOnly, nullawayEnabled, nullawayMode,
+                    nullawayAnnotatedPackages, nullawayExcludedClasses,
+                    kotlinVerificationEnabled, kotlinVerificationFailOnWarnings,
+                    kotlinVerificationGeneratedTestsDirectory, followSymlinks);
         }
     }
 }

@@ -5,7 +5,14 @@ public record CoverageSummary(
         int specifiedPublicApiElements,
         int nullMarkedPackages,
         int packagesSeen,
-        int ambiguousAnnotations
+        int ambiguousAnnotations,
+        int publicMethods,
+        int returnNullnessSpecified,
+        int publicParameters,
+        int parameterNullnessSpecified,
+        int genericTypeUses,
+        int genericTypeUseNullnessSpecified,
+        int kotlinInteropWarnings
 ) {
     public double specifiedRatio() {
         return publicApiElements == 0
@@ -17,5 +24,23 @@ public record CoverageSummary(
         return packagesSeen == 0
                 ? 1.0d
                 : (double) nullMarkedPackages / (double) packagesSeen;
+    }
+
+    public double returnNullnessRatio() {
+        return publicMethods == 0
+                ? 1.0d
+                : (double) returnNullnessSpecified / (double) publicMethods;
+    }
+
+    public double parameterNullnessRatio() {
+        return publicParameters == 0
+                ? 1.0d
+                : (double) parameterNullnessSpecified / (double) publicParameters;
+    }
+
+    public double genericTypeUseRatio() {
+        return genericTypeUses == 0
+                ? 1.0d
+                : (double) genericTypeUseNullnessSpecified / (double) genericTypeUses;
     }
 }

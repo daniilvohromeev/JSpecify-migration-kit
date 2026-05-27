@@ -15,6 +15,16 @@ public record JspecifyConfig(
         List<Path> sourceRoots,
         List<String> markPackages,
         List<String> leaveUnmarkedPackages,
+        List<String> publicApiIncludes,
+        List<String> publicApiExcludes,
+        boolean publicApiJpmsExportsOnly,
+        boolean nullawayEnabled,
+        String nullawayMode,
+        List<String> nullawayAnnotatedPackages,
+        List<String> nullawayExcludedClasses,
+        boolean kotlinVerificationEnabled,
+        boolean kotlinVerificationFailOnWarnings,
+        Path kotlinVerificationGeneratedTestsDirectory,
         boolean followSymlinks
 ) {
     public JspecifyConfig {
@@ -36,6 +46,18 @@ public record JspecifyConfig(
         leaveUnmarkedPackages = leaveUnmarkedPackages == null
                 ? List.of()
                 : List.copyOf(leaveUnmarkedPackages);
+        publicApiIncludes = publicApiIncludes == null ? List.of() : List.copyOf(publicApiIncludes);
+        publicApiExcludes = publicApiExcludes == null ? List.of() : List.copyOf(publicApiExcludes);
+        nullawayMode = nullawayMode == null || nullawayMode.isBlank() ? "warn" : nullawayMode;
+        nullawayAnnotatedPackages = nullawayAnnotatedPackages == null
+                ? List.of()
+                : List.copyOf(nullawayAnnotatedPackages);
+        nullawayExcludedClasses = nullawayExcludedClasses == null
+                ? List.of()
+                : List.copyOf(nullawayExcludedClasses);
+        kotlinVerificationGeneratedTestsDirectory = kotlinVerificationGeneratedTestsDirectory == null
+                ? Path.of("build/jspecify-kotlin-verification")
+                : kotlinVerificationGeneratedTestsDirectory;
     }
 
     public static JspecifyConfig defaults() {
@@ -48,6 +70,16 @@ public record JspecifyConfig(
                 List.of(),
                 List.of(),
                 List.of(),
+                List.of(),
+                List.of(),
+                false,
+                false,
+                "warn",
+                List.of(),
+                List.of(),
+                false,
+                false,
+                Path.of("build/jspecify-kotlin-verification"),
                 false);
     }
 

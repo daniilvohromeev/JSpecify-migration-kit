@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -20,15 +21,25 @@ public final class CoverageAnalyzer {
             "\\bpublic\\s+(class|interface|record|enum|@interface)\\s+\\w+");
     private static final Pattern PUBLIC_MEMBER = Pattern.compile(
             "\\b(public|protected)\\s+[^=;{}]+\\([^)]*\\)\\s*(throws\\s+[\\w.,\\s]+)?[;{]");
+    private static final Pattern PUBLIC_FIELD = Pattern.compile(
+            "\\b(public|protected)\\s+(static\\s+)?(final\\s+)?[^=;{}()]+\\s+\\w+\\s*(=|;)");
     private static final Pattern PACKAGE = Pattern.compile("^\\s*package\\s+([\\w.]+)\\s*;");
     private static final Pattern AMBIGUOUS = Pattern.compile("@\\w*Nullable\\s+\\w+[<].*[>]");
+    private static final Pattern EXPORTS = Pattern.compile("^\\s*exports\\s+([\\w.]+)\\s*;");
 
     public CoverageSummary analyze(ProjectModel project) throws IOException {
         int publicApi = 0;
         int specified = 0;
         int ambiguous = 0;
+        int publicMethods = 0;
+        int returnSpecified = 0;
+        int publicParameters = 0;
+        int parameterSpecified = 0;
+        int genericTypeUses = 0;
+        int genericTypeUseSpecified = 0;
         Set<String> packagesSeen = new HashSet<>();
         Set<String> nullMarkedPackages = new HashSet<>();
+        Set<String> exportedPackages = new HashSet<>();
         List<Path> javaFiles = new ArrayList<>();
 
         for (Path root : project.sourceRoots()) {
@@ -38,6 +49,7 @@ public final class CoverageAnalyzer {
             try (Stream<Path> stream = Files.walk(root)) {
                 stream
                         .filter(Files::isRegularFile)
+                        .filter(p -> shouldScan(project, p))
                         .filter(p -> p.toString().endsWith(".java"))
                         .forEach(javaFiles::add);
             }
@@ -45,8 +57,15 @@ public final class CoverageAnalyzer {
 
         for (Path file : javaFiles) {
             List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+            if (file.getFileName().toString().equals("module-info.java")) {
+                exportedPackages.addAll(exportedPackages(lines));
+            }
+        }
+
+        for (Path file : javaFiles) {
+            List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
             String packageName = packageName(lines);
-            if (!packageName.isBlank()) {
+            if (!packageName.isBlank() && isPublicApiPackage(project, exportedPackages, packageName)) {
                 packagesSeen.add(packageName);
             }
             if (file.getFileName().toString().equals("package-info.java")
@@ -58,22 +77,51 @@ public final class CoverageAnalyzer {
         for (Path file : javaFiles) {
             List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
             String packageName = packageName(lines);
+            if (!isPublicApiPackage(project, exportedPackages, packageName)) {
+                continue;
+            }
             boolean fileNullMarked = hasNullMarked(lines) || nullMarkedPackages.contains(packageName);
             for (int i = 0; i < lines.size(); i++) {
                 String line = lines.get(i);
                 if (AMBIGUOUS.matcher(line).find()) {
                     ambiguous++;
                 }
-                if (PUBLIC_TYPE.matcher(line).find() || PUBLIC_MEMBER.matcher(line).find()) {
+                boolean localNullness = hasLocalNullness(lines, i);
+                boolean method = PUBLIC_MEMBER.matcher(line).find();
+                boolean field = PUBLIC_FIELD.matcher(line).find();
+                boolean type = PUBLIC_TYPE.matcher(line).find();
+                if (type || method || field) {
                     publicApi++;
-                    if (fileNullMarked || hasLocalNullness(lines, i)) {
+                    if (fileNullMarked || localNullness) {
                         specified++;
+                    }
+                }
+                if (method) {
+                    publicMethods++;
+                    if (fileNullMarked || localNullness) {
+                        returnSpecified++;
+                    }
+                    for (String parameter : parameters(line)) {
+                        publicParameters++;
+                        if (fileNullMarked || hasNullnessToken(parameter)) {
+                            parameterSpecified++;
+                        }
+                    }
+                }
+                int generics = genericTypeUseCount(line);
+                if ((type || method || field) && generics > 0) {
+                    genericTypeUses += generics;
+                    if (hasAnnotatedTypeArgument(line)) {
+                        genericTypeUseSpecified += generics;
                     }
                 }
             }
         }
+        int kotlinWarnings = Math.max(0, publicMethods - returnSpecified);
         return new CoverageSummary(publicApi, specified, nullMarkedPackages.size(),
-                packagesSeen.size(), ambiguous);
+                packagesSeen.size(), ambiguous, publicMethods, returnSpecified,
+                publicParameters, parameterSpecified, genericTypeUses,
+                genericTypeUseSpecified, kotlinWarnings);
     }
 
     private String packageName(List<String> lines) {
@@ -95,12 +143,155 @@ public final class CoverageAnalyzer {
         int start = Math.max(0, index - 2);
         for (int i = start; i <= index; i++) {
             String line = lines.get(i);
-            if (line.contains("@Nullable") || line.contains("@NonNull")
-                    || line.contains("@" + AnnotationCatalog.JSPECIFY_NULLABLE)
-                    || line.contains("@" + AnnotationCatalog.JSPECIFY_NON_NULL)) {
+            if (hasNullnessToken(line)) {
                 return true;
             }
         }
         return false;
+    }
+
+    private boolean hasNullnessToken(String text) {
+        return text.contains("@Nullable") || text.contains("@NonNull")
+                || text.contains("@" + AnnotationCatalog.JSPECIFY_NULLABLE)
+                || text.contains("@" + AnnotationCatalog.JSPECIFY_NON_NULL);
+    }
+
+    private Set<String> exportedPackages(List<String> lines) {
+        Set<String> exported = new HashSet<>();
+        for (String line : lines) {
+            Matcher matcher = EXPORTS.matcher(line);
+            if (matcher.find()) {
+                exported.add(matcher.group(1));
+            }
+        }
+        return exported;
+    }
+
+    private boolean isPublicApiPackage(ProjectModel project,
+                                       Set<String> exportedPackages,
+                                       String packageName) {
+        if (packageName.isBlank()) {
+            return !project.publicApiJpmsExportsOnly();
+        }
+        if (project.publicApiJpmsExportsOnly()
+                && !exportedPackages.isEmpty()
+                && !exportedPackages.contains(packageName)) {
+            return false;
+        }
+        if (!project.publicApiIncludes().isEmpty()
+                && project.publicApiIncludes().stream()
+                .noneMatch(pattern -> packageMatch(pattern, packageName))) {
+            return false;
+        }
+        return project.publicApiExcludes().stream()
+                .noneMatch(pattern -> packageMatch(pattern, packageName));
+    }
+
+    private boolean shouldScan(ProjectModel project, Path file) {
+        if (Files.isSymbolicLink(file) && !project.followSymlinks()) {
+            return false;
+        }
+        Path normalized = file.toAbsolutePath().normalize();
+        if (!project.followSymlinks() && !normalized.startsWith(project.rootDirectory())) {
+            return false;
+        }
+        Path relative = project.rootDirectory().relativize(normalized);
+        String normalizedRelative = relative.toString().replace('\\', '/');
+        for (String pattern : project.excludedPathPatterns()) {
+            if (pathGlobMatch(pattern, normalizedRelative)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean pathGlobMatch(String pattern, String relativePath) {
+        StringBuilder regex = new StringBuilder();
+        for (int i = 0; i < pattern.length(); i++) {
+            char c = pattern.charAt(i);
+            if (c == '*' && i + 1 < pattern.length() && pattern.charAt(i + 1) == '*') {
+                regex.append(".*");
+                i++;
+            } else if (c == '*') {
+                regex.append("[^/]*");
+            } else {
+                if ("\\.[]{}()+-^$?|".indexOf(c) >= 0) {
+                    regex.append('\\');
+                }
+                regex.append(c);
+            }
+        }
+        return relativePath.matches(regex.toString());
+    }
+
+    private boolean packageMatch(String pattern, String packageName) {
+        if (pattern.endsWith(".**")) {
+            String prefix = pattern.substring(0, pattern.length() - 3);
+            return packageName.equals(prefix) || packageName.startsWith(prefix + ".");
+        }
+        StringBuilder regex = new StringBuilder();
+        for (int i = 0; i < pattern.length(); i++) {
+            char c = pattern.charAt(i);
+            if (c == '*' && i + 1 < pattern.length() && pattern.charAt(i + 1) == '*') {
+                regex.append(".*");
+                i++;
+            } else if (c == '*') {
+                regex.append("[^.]*");
+            } else {
+                if ("\\.[]{}()+-^$?|".indexOf(c) >= 0) {
+                    regex.append('\\');
+                }
+                regex.append(c);
+            }
+        }
+        return packageName.matches(regex.toString());
+    }
+
+    private List<String> parameters(String line) {
+        int start = line.indexOf('(');
+        int end = line.indexOf(')', start + 1);
+        if (start < 0 || end < 0 || end <= start + 1) {
+            return List.of();
+        }
+        String body = line.substring(start + 1, end).trim();
+        if (body.isBlank()) {
+            return List.of();
+        }
+        List<String> result = new ArrayList<>();
+        int depth = 0;
+        StringBuilder current = new StringBuilder();
+        for (int i = 0; i < body.length(); i++) {
+            char c = body.charAt(i);
+            if (c == '<') {
+                depth++;
+            } else if (c == '>') {
+                depth = Math.max(0, depth - 1);
+            } else if (c == ',' && depth == 0) {
+                result.add(current.toString().trim());
+                current.setLength(0);
+                continue;
+            }
+            current.append(c);
+        }
+        if (!current.isEmpty()) {
+            result.add(current.toString().trim());
+        }
+        return result.stream().filter(s -> !s.isBlank()).toList();
+    }
+
+    private int genericTypeUseCount(String line) {
+        int count = 0;
+        for (int i = 0; i < line.length(); i++) {
+            if (line.charAt(i) == '<') {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private boolean hasAnnotatedTypeArgument(String line) {
+        int start = line.indexOf('<');
+        int end = line.lastIndexOf('>');
+        return start >= 0 && end > start && hasNullnessToken(line.substring(start, end + 1));
     }
 }

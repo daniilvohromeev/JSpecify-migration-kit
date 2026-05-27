@@ -44,6 +44,23 @@ class JspecifyConfigLoaderTest {
                     - "com.acme.api"
                   leaveUnmarked:
                     - "com.acme.legacy"
+                publicApi:
+                  include:
+                    - "com.acme.api.**"
+                  exclude:
+                    - "com.acme.internal.**"
+                  jpmsExportsOnly: true
+                nullaway:
+                  enabled: true
+                  mode: error
+                  annotatedPackages:
+                    - "com.acme"
+                  excludedClasses:
+                    - "com.acme.generated.*"
+                kotlinVerification:
+                  enabled: true
+                  failOnWarnings: true
+                  generatedTestsDirectory: build/kotlin-checks
                 scanner:
                   followSymlinks: false
                 """);
@@ -59,6 +76,17 @@ class JspecifyConfigLoaderTest {
         assertEquals(List.of(Path.of("src/main/java")), config.sourceRoots());
         assertEquals(List.of("com.acme.api"), config.markPackages());
         assertEquals(List.of("com.acme.legacy"), config.leaveUnmarkedPackages());
+        assertEquals(List.of("com.acme.api.**"), config.publicApiIncludes());
+        assertEquals(List.of("com.acme.internal.**"), config.publicApiExcludes());
+        assertTrue(config.publicApiJpmsExportsOnly());
+        assertTrue(config.nullawayEnabled());
+        assertEquals("error", config.nullawayMode());
+        assertEquals(List.of("com.acme"), config.nullawayAnnotatedPackages());
+        assertEquals(List.of("com.acme.generated.*"), config.nullawayExcludedClasses());
+        assertTrue(config.kotlinVerificationEnabled());
+        assertTrue(config.kotlinVerificationFailOnWarnings());
+        assertEquals(Path.of("build/kotlin-checks"),
+                config.kotlinVerificationGeneratedTestsDirectory());
         assertFalse(config.followSymlinks());
     }
 }

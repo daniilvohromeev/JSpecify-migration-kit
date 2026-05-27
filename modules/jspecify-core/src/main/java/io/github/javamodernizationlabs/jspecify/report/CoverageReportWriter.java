@@ -6,6 +6,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 public final class CoverageReportWriter {
 
@@ -21,7 +25,13 @@ public final class CoverageReportWriter {
                 | Packages seen | %d |
                 | @NullMarked packages | %d |
                 | @NullMarked package coverage | %.1f%% |
+                | Public methods | %d |
+                | Return nullness specified | %d / %d = %.1f%% |
+                | Public parameters | %d |
+                | Parameter nullness specified | %d / %d = %.1f%% |
+                | Generic type-use coverage | %d / %d = %.1f%% |
                 | Ambiguous annotations | %d |
+                | Kotlin interop warnings | %d |
                 """.formatted(
                 summary.publicApiElements(),
                 summary.specifiedPublicApiElements(),
@@ -29,7 +39,19 @@ public final class CoverageReportWriter {
                 summary.packagesSeen(),
                 summary.nullMarkedPackages(),
                 summary.nullMarkedPackageRatio() * 100.0d,
-                summary.ambiguousAnnotations());
+                summary.publicMethods(),
+                summary.returnNullnessSpecified(),
+                summary.publicMethods(),
+                summary.returnNullnessRatio() * 100.0d,
+                summary.publicParameters(),
+                summary.parameterNullnessSpecified(),
+                summary.publicParameters(),
+                summary.parameterNullnessRatio() * 100.0d,
+                summary.genericTypeUseNullnessSpecified(),
+                summary.genericTypeUses(),
+                summary.genericTypeUseRatio() * 100.0d,
+                summary.ambiguousAnnotations(),
+                summary.kotlinInteropWarnings());
     }
 
     public String json(CoverageSummary summary) {
@@ -44,15 +66,100 @@ public final class CoverageReportWriter {
                 + Json.string("nullMarkedPackageCoverage") + ":"
                 + Double.toString(summary.nullMarkedPackageRatio()) + ","
                 + Json.string("ambiguousAnnotations") + ":"
-                + Json.number(summary.ambiguousAnnotations())
+                + Json.number(summary.ambiguousAnnotations()) + ","
+                + Json.string("publicMethods") + ":" + Json.number(summary.publicMethods()) + ","
+                + Json.string("returnNullnessSpecified") + ":"
+                + Json.number(summary.returnNullnessSpecified()) + ","
+                + Json.string("returnNullnessCoverage") + ":"
+                + Double.toString(summary.returnNullnessRatio()) + ","
+                + Json.string("publicParameters") + ":" + Json.number(summary.publicParameters()) + ","
+                + Json.string("parameterNullnessSpecified") + ":"
+                + Json.number(summary.parameterNullnessSpecified()) + ","
+                + Json.string("parameterNullnessCoverage") + ":"
+                + Double.toString(summary.parameterNullnessRatio()) + ","
+                + Json.string("genericTypeUses") + ":" + Json.number(summary.genericTypeUses()) + ","
+                + Json.string("genericTypeUseNullnessSpecified") + ":"
+                + Json.number(summary.genericTypeUseNullnessSpecified()) + ","
+                + Json.string("genericTypeUseCoverage") + ":"
+                + Double.toString(summary.genericTypeUseRatio()) + ","
+                + Json.string("kotlinInteropWarnings") + ":"
+                + Json.number(summary.kotlinInteropWarnings())
                 + "}";
     }
 
     public void write(Path outputDirectory, CoverageSummary summary) throws IOException {
+        write(outputDirectory, summary, List.of("markdown", "json", "html"));
+    }
+
+    public void write(Path outputDirectory, CoverageSummary summary, List<String> formats)
+            throws IOException {
         Files.createDirectories(outputDirectory);
-        Files.writeString(outputDirectory.resolve("coverage.md"), markdown(summary),
-                StandardCharsets.UTF_8);
-        Files.writeString(outputDirectory.resolve("coverage.json"), json(summary),
-                StandardCharsets.UTF_8);
+        Set<String> requested = normalize(formats);
+        if (requested.contains("markdown") || requested.contains("md")) {
+            Files.writeString(outputDirectory.resolve("coverage.md"), markdown(summary),
+                    StandardCharsets.UTF_8);
+        }
+        if (requested.contains("json")) {
+            Files.writeString(outputDirectory.resolve("coverage.json"), json(summary),
+                    StandardCharsets.UTF_8);
+        }
+        if (requested.contains("html")) {
+            Files.writeString(outputDirectory.resolve("coverage.html"), html(summary),
+                    StandardCharsets.UTF_8);
+        }
+    }
+
+    public String html(CoverageSummary summary) {
+        return """
+                <!doctype html>
+                <html lang="en">
+                <head>
+                  <meta charset="utf-8">
+                  <title>JSpecify Coverage</title>
+                  <style>
+                    body { font-family: system-ui, sans-serif; margin: 2rem; color: #172026; }
+                    table { border-collapse: collapse; min-width: 42rem; }
+                    th, td { border: 1px solid #d5dde5; padding: .5rem .65rem; }
+                    th { background: #edf2f7; text-align: left; }
+                    td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+                  </style>
+                </head>
+                <body>
+                  <h1>JSpecify Coverage</h1>
+                  <table>
+                    <tr><th>Metric</th><th>Value</th></tr>
+                    <tr><td>Public API coverage</td><td>%.1f%%</td></tr>
+                    <tr><td>@NullMarked package coverage</td><td>%.1f%%</td></tr>
+                    <tr><td>Return nullness coverage</td><td>%.1f%%</td></tr>
+                    <tr><td>Parameter nullness coverage</td><td>%.1f%%</td></tr>
+                    <tr><td>Generic type-use coverage</td><td>%.1f%%</td></tr>
+                    <tr><td>Ambiguous annotations</td><td>%d</td></tr>
+                    <tr><td>Kotlin interop warnings</td><td>%d</td></tr>
+                  </table>
+                </body>
+                </html>
+                """.formatted(
+                summary.specifiedRatio() * 100.0d,
+                summary.nullMarkedPackageRatio() * 100.0d,
+                summary.returnNullnessRatio() * 100.0d,
+                summary.parameterNullnessRatio() * 100.0d,
+                summary.genericTypeUseRatio() * 100.0d,
+                summary.ambiguousAnnotations(),
+                summary.kotlinInteropWarnings());
+    }
+
+    private Set<String> normalize(List<String> formats) {
+        Set<String> normalized = new LinkedHashSet<>();
+        if (formats == null || formats.isEmpty()) {
+            normalized.addAll(List.of("markdown", "json", "html"));
+            return normalized;
+        }
+        for (String format : formats) {
+            if (format == null || format.isBlank()) {
+                continue;
+            }
+            normalized.add(format.toLowerCase(Locale.ROOT));
+        }
+        return normalized;
     }
 }

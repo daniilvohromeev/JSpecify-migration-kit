@@ -1,5 +1,9 @@
 package io.github.javamodernizationlabs.jspecify.gradle;
 
+import io.github.javamodernizationlabs.jspecify.ProjectModel;
+import io.github.javamodernizationlabs.jspecify.config.JspecifyConfig;
+import io.github.javamodernizationlabs.jspecify.config.JspecifyConfigLoader;
+import io.github.javamodernizationlabs.jspecify.kotlin.KotlinInteropVerifier;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.provider.Property;
@@ -8,7 +12,6 @@ import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.TaskAction;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
 public abstract class JspecifyVerifyKotlinTask extends DefaultTask {
@@ -29,18 +32,17 @@ public abstract class JspecifyVerifyKotlinTask extends DefaultTask {
     public void run() throws IOException {
         var output = getOutputDirectory().getAsFile().get().toPath();
         Files.createDirectories(output);
-        String report = """
-                # Kotlin interop verification
-
-                Generated source set: `%s`
-                Fail on warnings: `%s`
-
-                This prototype creates the verification directory expected by the
-                JSpecify Migration Kit workflow. Stable compilation against the
-                Kotlin compiler is tracked as the v0.2 verifier milestone.
-                """.formatted(getGeneratedSourceSet().getOrElse("jspecifyKotlinVerification"),
-                getFailOnWarnings().getOrElse(false));
-        Files.writeString(output.resolve("kotlin-verification.md"), report, StandardCharsets.UTF_8);
+        var projectRoot = getProject().getProjectDir().toPath();
+        JspecifyConfig config = JspecifyConfigLoader.load(projectRoot);
+        var result = new KotlinInteropVerifier().verify(ProjectModel.of(projectRoot, config),
+                output,
+                getKotlinVerificationEnabled().getOrElse(false),
+                getKotlinVerificationEnabled().getOrElse(false),
+                java.util.List.of(projectRoot.resolve("build/classes/java/main")));
+        if (getFailOnWarnings().getOrElse(false) && !result.warnings().isEmpty()) {
+            throw new IOException("Kotlin verification warnings: "
+                    + String.join("; ", result.warnings()));
+        }
         getLogger().lifecycle("JSpecify Kotlin verification report written to {}", output);
     }
 }

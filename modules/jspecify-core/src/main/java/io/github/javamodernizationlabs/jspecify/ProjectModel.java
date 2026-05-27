@@ -16,6 +16,9 @@ public record ProjectModel(
         Path rootDirectory,
         List<Path> sourceRoots,
         List<String> excludedPathPatterns,
+        List<String> publicApiIncludes,
+        List<String> publicApiExcludes,
+        boolean publicApiJpmsExportsOnly,
         boolean followSymlinks
 ) {
     public ProjectModel {
@@ -24,6 +27,8 @@ public record ProjectModel(
         excludedPathPatterns = excludedPathPatterns == null
                 ? List.of()
                 : List.copyOf(excludedPathPatterns);
+        publicApiIncludes = publicApiIncludes == null ? List.of() : List.copyOf(publicApiIncludes);
+        publicApiExcludes = publicApiExcludes == null ? List.of() : List.copyOf(publicApiExcludes);
     }
 
     public static ProjectModel of(Path rootDirectory) {
@@ -38,12 +43,26 @@ public record ProjectModel(
                 root,
                 discoverSourceRoots(root, config.sourceRoots()),
                 config.generatedCodeExcludes(),
+                config.publicApiIncludes(),
+                config.publicApiExcludes(),
+                config.publicApiJpmsExportsOnly(),
                 config.followSymlinks());
     }
 
     public static ProjectModel of(Path rootDirectory,
                                   List<Path> sourceRoots,
                                   List<String> excludedPathPatterns,
+                                  boolean followSymlinks) {
+        return of(rootDirectory, sourceRoots, excludedPathPatterns, List.of(), List.of(),
+                false, followSymlinks);
+    }
+
+    public static ProjectModel of(Path rootDirectory,
+                                  List<Path> sourceRoots,
+                                  List<String> excludedPathPatterns,
+                                  List<String> publicApiIncludes,
+                                  List<String> publicApiExcludes,
+                                  boolean publicApiJpmsExportsOnly,
                                   boolean followSymlinks) {
         Path root = rootDirectory.toAbsolutePath().normalize();
         List<Path> normalizedRoots = sourceRoots == null
@@ -58,6 +77,9 @@ public record ProjectModel(
                 root,
                 normalizedRoots,
                 excludedPathPatterns,
+                publicApiIncludes,
+                publicApiExcludes,
+                publicApiJpmsExportsOnly,
                 followSymlinks);
     }
 
