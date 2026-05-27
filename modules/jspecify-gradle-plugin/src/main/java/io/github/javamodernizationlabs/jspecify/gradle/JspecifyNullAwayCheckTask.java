@@ -1,16 +1,20 @@
 package io.github.javamodernizationlabs.jspecify.gradle;
 
 import org.gradle.api.DefaultTask;
+import org.gradle.api.GradleException;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.api.tasks.compile.JavaCompile;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.List;
+import java.util.Locale;
 
 public abstract class JspecifyNullAwayCheckTask extends DefaultTask {
 
@@ -33,6 +37,32 @@ public abstract class JspecifyNullAwayCheckTask extends DefaultTask {
     public void run() throws IOException {
         var output = getOutputDirectory().getAsFile().get().toPath();
         Files.createDirectories(output);
+        if (!getNullAwayEnabled().getOrElse(false)) {
+            Files.writeString(output.resolve("nullaway-check.md"),
+                    "# JSpecify NullAway check\n\nStatus: `disabled`\n",
+                    StandardCharsets.UTF_8);
+            getLogger().lifecycle("JSpecify NullAway check disabled.");
+            return;
+        }
+
+        List<String> packages = getAnnotatedPackages().getOrElse(List.of());
+        List<String> excluded = getExcludedClasses().getOrElse(List.of());
+        if (packages.isEmpty()) {
+            throw new GradleException("JSpecify NullAway profile is enabled but no "
+                    + "annotatedPackages are configured.");
+        }
+        boolean errorProneConfigured = hasErrorPronePlugin()
+                || javaCompileArgsContain("errorprone")
+                || javaCompileArgsContain("-xep:");
+        boolean nullAwayConfigured = hasDependency("nullaway")
+                || javaCompileArgsContain("nullaway");
+        if (!errorProneConfigured || !nullAwayConfigured) {
+            throw new GradleException("JSpecify NullAway profile is enabled but the project "
+                    + "does not expose an executable Error Prone/NullAway setup. Apply an "
+                    + "Error Prone Gradle plugin and add the com.uber.nullaway:nullaway "
+                    + "dependency before running jspecifyNullAwayCheck.");
+        }
+
         String severity = getMode().getOrElse("warn").equalsIgnoreCase("error")
                 ? "ERROR"
                 : "WARN";
@@ -47,11 +77,49 @@ public abstract class JspecifyNullAwayCheckTask extends DefaultTask {
                     }
                 }
                 """.formatted(
-                String.join(",", getAnnotatedPackages().getOrElse(java.util.List.of())),
-                String.join(",", getExcludedClasses().getOrElse(java.util.List.of())),
+                String.join(",", packages),
+                String.join(",", excluded),
                 severity);
         Files.writeString(output.resolve("nullaway.gradle.kts"), gradleSnippet,
                 StandardCharsets.UTF_8);
-        getLogger().lifecycle("JSpecify NullAway config written to {}", output);
+        String report = """
+                # JSpecify NullAway check
+
+                Status: `ready`
+                Error Prone configured: `%s`
+                NullAway configured: `%s`
+                Mode: `%s`
+                Annotated packages: `%s`
+                Excluded classes: `%s`
+                """.formatted(errorProneConfigured, nullAwayConfigured,
+                getMode().getOrElse("warn"), String.join(",", packages),
+                String.join(",", excluded));
+        Files.writeString(output.resolve("nullaway-check.md"), report, StandardCharsets.UTF_8);
+        getLogger().lifecycle("JSpecify NullAway profile verified; config written to {}", output);
+    }
+
+    private boolean hasErrorPronePlugin() {
+        return getProject().getPlugins().hasPlugin("net.ltgt.errorprone")
+                || getProject().getPlugins().hasPlugin("net.ltgt.errorprone-base");
+    }
+
+    private boolean hasDependency(String token) {
+        String lower = token.toLowerCase(Locale.ROOT);
+        return getProject().getConfigurations().stream()
+                .flatMap(configuration -> configuration.getDependencies().stream())
+                .anyMatch(dependency -> containsIgnoreCase(dependency.getGroup(), lower)
+                        || containsIgnoreCase(dependency.getName(), lower));
+    }
+
+    private boolean javaCompileArgsContain(String token) {
+        String lower = token.toLowerCase(Locale.ROOT);
+        return getProject().getTasks().withType(JavaCompile.class).stream()
+                .flatMap(task -> task.getOptions().getCompilerArgs().stream())
+                .map(arg -> arg.toLowerCase(Locale.ROOT))
+                .anyMatch(arg -> arg.contains(lower));
+    }
+
+    private boolean containsIgnoreCase(String value, String lowerToken) {
+        return value != null && value.toLowerCase(Locale.ROOT).contains(lowerToken);
     }
 }
