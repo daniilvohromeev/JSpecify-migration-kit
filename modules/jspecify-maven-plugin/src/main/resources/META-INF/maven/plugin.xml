@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin>
+  <name>JSpecify Migration Kit Maven Plugin</name>
+  <description>Plan and apply migrations to JSpecify null-safety annotations.</description>
+  <groupId>io.github.javamodernizationlabs</groupId>
+  <artifactId>jspecify-migration-maven-plugin</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <goalPrefix>jspecify-migration</goalPrefix>
+  <mojos>
+    <mojo>
+      <goal>plan</goal>
+      <implementation>io.github.javamodernizationlabs.jspecify.maven.PlanMojo</implementation>
+      <requiresProject>true</requiresProject>
+      <threadSafe>true</threadSafe>
+    </mojo>
+    <mojo>
+      <goal>rewrite-dry-run</goal>
+      <implementation>io.github.javamodernizationlabs.jspecify.maven.RewriteDryRunMojo</implementation>
+      <requiresProject>true</requiresProject>
+      <threadSafe>true</threadSafe>
+    </mojo>
+    <mojo>
+      <goal>rewrite-apply</goal>
+      <implementation>io.github.javamodernizationlabs.jspecify.maven.RewriteApplyMojo</implementation>
+      <requiresProject>true</requiresProject>
+      <threadSafe>true</threadSafe>
+    </mojo>
+    <mojo>
+      <goal>coverage</goal>
+      <implementation>io.github.javamodernizationlabs.jspecify.maven.CoverageMojo</implementation>
+      <requiresProject>true</requiresProject>
+      <threadSafe>true</threadSafe>
+    </mojo>
+    <mojo>
+      <goal>nullaway-check</goal>
+      <implementation>io.github.javamodernizationlabs.jspecify.maven.NullAwayCheckMojo</implementation>
+      <requiresProject>true</requiresProject>
+      <threadSafe>true</threadSafe>
+    </mojo>
+    <mojo>
+      <goal>verify-kotlin</goal>
+      <implementation>io.github.javamodernizationlabs.jspecify.maven.VerifyKotlinMojo</implementation>
+      <requiresProject>true</requiresProject>
+      <threadSafe>true</threadSafe>
+    </mojo>
+    <mojo>
+      <goal>report</goal>
+      <implementation>io.github.javamodernizationlabs.jspecify.maven.ReportMojo</implementation>
+      <requiresProject>true</requiresProject>
+      <threadSafe>true</threadSafe>
+    </mojo>
+  </mojos>
+</plugin>
