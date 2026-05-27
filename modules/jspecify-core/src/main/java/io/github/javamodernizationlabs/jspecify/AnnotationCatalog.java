@@ -57,6 +57,7 @@ public final class AnnotationCatalog {
         m.put("org.springframework.lang.Nullable", JSPECIFY_NULLABLE);
         m.put("edu.umd.cs.findbugs.annotations.Nullable", JSPECIFY_NULLABLE);
         m.put("edu.umd.cs.findbugs.annotations.PossiblyNull", JSPECIFY_NULLABLE);
+        m.put("io.micrometer.common.lang.Nullable", JSPECIFY_NULLABLE);
         m.put("androidx.annotation.Nullable", JSPECIFY_NULLABLE);
         m.put("android.support.annotation.Nullable", JSPECIFY_NULLABLE);
         m.put("com.android.annotations.Nullable", JSPECIFY_NULLABLE);
@@ -69,6 +70,7 @@ public final class AnnotationCatalog {
         m.put("jakarta.annotation.Nonnull", JSPECIFY_NON_NULL);
         m.put("org.springframework.lang.NonNull", JSPECIFY_NON_NULL);
         m.put("edu.umd.cs.findbugs.annotations.NonNull", JSPECIFY_NON_NULL);
+        m.put("io.micrometer.common.lang.NonNull", JSPECIFY_NON_NULL);
         m.put("androidx.annotation.NonNull", JSPECIFY_NON_NULL);
         m.put("android.support.annotation.NonNull", JSPECIFY_NON_NULL);
         m.put("com.android.annotations.NonNull", JSPECIFY_NON_NULL);

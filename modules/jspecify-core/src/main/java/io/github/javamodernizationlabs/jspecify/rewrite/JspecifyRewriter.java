@@ -70,6 +70,13 @@ public final class JspecifyRewriter {
                 if (normalized.endsWith(".migrate") || normalized.equals("migrate")) {
                     recipes.add("add-dependency");
                     recipes.add("convert-known-annotations");
+                } else if (normalized.endsWith(".springpreset")
+                        || normalized.endsWith(".reactorpreset")
+                        || normalized.endsWith(".micrometerpreset")
+                        || normalized.equals("spring-preset")
+                        || normalized.equals("reactor-preset")
+                        || normalized.equals("micrometer-preset")) {
+                    recipes.add("convert-known-annotations");
                 } else if (normalized.endsWith(".addjspecifydependency")
                         || normalized.equals("add-dependency")
                         || normalized.equals("add-jspecify-dependency")) {
@@ -220,6 +227,18 @@ public final class JspecifyRewriter {
     private List<String> unsafeWarnings(Path file, String content) {
         List<String> warnings = new ArrayList<>();
         for (String annotation : UNSAFE_DEFAULT_ANNOTATIONS) {
+            if (content.contains("@" + annotation)) {
+                warnings.add(file + ": default/meta annotation @" + annotation
+                        + " requires manual JSpecify package policy review.");
+            }
+        }
+        for (String annotation : List.of(
+                "org.springframework.lang.NonNullApi",
+                "org.springframework.lang.NonNullFields",
+                "reactor.util.annotation.NonNullApi",
+                "reactor.util.annotation.NonNullFields",
+                "io.micrometer.common.lang.NonNullApi",
+                "io.micrometer.common.lang.NonNullFields")) {
             if (content.contains("@" + annotation)) {
                 warnings.add(file + ": default/meta annotation @" + annotation
                         + " requires manual JSpecify package policy review.");

@@ -52,7 +52,39 @@ recipeList:
   - org.openrewrite.java.search.FindAnnotations:
       annotationPattern: "@org.springframework.lang.NonNullFields"
   - org.openrewrite.java.search.FindAnnotations:
+      annotationPattern: "@reactor.util.annotation.NonNullApi"
+  - org.openrewrite.java.search.FindAnnotations:
+      annotationPattern: "@reactor.util.annotation.NonNullFields"
+  - org.openrewrite.java.search.FindAnnotations:
+      annotationPattern: "@io.micrometer.common.lang.NonNullApi"
+  - org.openrewrite.java.search.FindAnnotations:
+      annotationPattern: "@io.micrometer.common.lang.NonNullFields"
+  - org.openrewrite.java.search.FindAnnotations:
       annotationPattern: "@javax.annotation.meta.TypeQualifierDefault"
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: io.github.jml.jspecify.SpringPreset
+displayName: Spring JSpecify migration preset
+description: Converts Spring nullness annotations and marks Spring package defaults for review.
+recipeList:
+  - io.github.jml.jspecify.FindUnsafeNullnessDefaults
+  - io.github.jml.jspecify.ConvertKnownAnnotations
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: io.github.jml.jspecify.ReactorPreset
+displayName: Reactor JSpecify migration preset
+description: Converts Reactor nullness annotations and marks Reactor package defaults for review.
+recipeList:
+  - io.github.jml.jspecify.FindUnsafeNullnessDefaults
+  - io.github.jml.jspecify.ConvertKnownAnnotations
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: io.github.jml.jspecify.MicrometerPreset
+displayName: Micrometer JSpecify migration preset
+description: Converts Micrometer nullness annotations and marks Micrometer package defaults for review.
+recipeList:
+  - io.github.jml.jspecify.FindUnsafeNullnessDefaults
+  - io.github.jml.jspecify.ConvertKnownAnnotations
 ---
 type: specs.openrewrite.org/v1beta/recipe
 name: io.github.jml.jspecify.Migrate

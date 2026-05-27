@@ -8,8 +8,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -20,7 +24,8 @@ public final class KotlinInteropVerifier {
     private static final Pattern PUBLIC_TYPE = Pattern.compile(
             "\\bpublic\\s+(?:class|interface|record|enum)\\s+(\\w+)");
     private static final Pattern PUBLIC_NO_ARG_METHOD = Pattern.compile(
-            "\\bpublic\\s+[^=;{}()]+\\s+(\\w+)\\s*\\(\\s*\\)\\s*(?:throws\\s+[\\w.,\\s]+)?[;{]");
+            "\\bpublic\\s+(.+?)\\s+(\\w+)\\s*\\(\\s*\\)\\s*(?:throws\\s+[\\w.,\\s]+)?[;{]");
+    private static final Pattern IMPORT = Pattern.compile("^\\s*import\\s+([\\w.]+)\\s*;");
 
     public KotlinVerificationResult verify(ProjectModel project,
                                            Path outputDirectory,
@@ -31,12 +36,12 @@ public final class KotlinInteropVerifier {
         List<String> warnings = new ArrayList<>();
         Path sampleFile = outputDirectory.resolve("KotlinInteropSamples.kt");
         if (generateSamples) {
-            Files.writeString(sampleFile, sampleSource(project), StandardCharsets.UTF_8);
+            Files.writeString(sampleFile, sampleSource(project, warnings), StandardCharsets.UTF_8);
         }
         String compileStatus = "not requested";
         if (compileSamples) {
             if (!generateSamples) {
-                Files.writeString(sampleFile, sampleSource(project), StandardCharsets.UTF_8);
+                Files.writeString(sampleFile, sampleSource(project, warnings), StandardCharsets.UTF_8);
             }
             compileStatus = compile(sampleFile, outputDirectory, classpath, warnings);
         }
@@ -46,7 +51,7 @@ public final class KotlinInteropVerifier {
                 generateSamples || compileSamples, compileSamples, compileStatus, warnings);
     }
 
-    private String sampleSource(ProjectModel project) throws IOException {
+    private String sampleSource(ProjectModel project, List<String> warnings) throws IOException {
         List<ApiType> apiTypes = publicApi(project);
         StringBuilder out = new StringBuilder();
         out.append("package jspecify.verification\n\n");
@@ -58,9 +63,11 @@ public final class KotlinInteropVerifier {
             if (type.noArgMethods().isEmpty()) {
                 out.append("        api.toString()\n");
             } else {
-                for (String method : type.noArgMethods()) {
-                    out.append("        val ").append(method).append("Value = api.")
-                            .append(method).append("()\n");
+                for (MethodAssertion method : type.noArgMethods()) {
+                    method.warning().ifPresent(warnings::add);
+                    out.append("        val ").append(method.name()).append("Value");
+                    method.kotlinType().ifPresent(kotlinType -> out.append(": ").append(kotlinType));
+                    out.append(" = api.").append(method.name()).append("()\n");
                 }
             }
             out.append("    }\n\n");
@@ -73,6 +80,7 @@ public final class KotlinInteropVerifier {
     }
 
     private List<ApiType> publicApi(ProjectModel project) throws IOException {
+        Set<String> nullMarkedPackages = nullMarkedPackages(project);
         List<ApiType> types = new ArrayList<>();
         for (Path root : project.sourceRoots()) {
             if (!Files.isDirectory(root)) {
@@ -90,14 +98,42 @@ public final class KotlinInteropVerifier {
                     if (typeName.isEmpty()) {
                         continue;
                     }
+                    Map<String, String> imports = imports(lines);
                     String qualifiedName = packageName.isBlank()
                             ? typeName.get()
                             : packageName + "." + typeName.get();
-                    types.add(new ApiType(qualifiedName, typeName.get(), publicNoArgMethods(lines)));
+                    boolean nullMarked = hasNullMarked(lines) || nullMarkedPackages.contains(packageName);
+                    types.add(new ApiType(qualifiedName, typeName.get(),
+                            publicNoArgMethods(qualifiedName, lines, imports, nullMarked)));
                 }
             }
         }
         return types;
+    }
+
+    private Set<String> nullMarkedPackages(ProjectModel project) throws IOException {
+        Set<String> packages = new HashSet<>();
+        for (Path root : project.sourceRoots()) {
+            if (!Files.isDirectory(root)) {
+                continue;
+            }
+            try (Stream<Path> stream = Files.walk(root)) {
+                Iterable<Path> files = stream
+                        .filter(Files::isRegularFile)
+                        .filter(path -> path.getFileName().toString().equals("package-info.java"))
+                        ::iterator;
+                for (Path file : files) {
+                    List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+                    if (hasNullMarked(lines)) {
+                        String packageName = packageName(lines);
+                        if (!packageName.isBlank()) {
+                            packages.add(packageName);
+                        }
+                    }
+                }
+            }
+        }
+        return packages;
     }
 
     private String packageName(List<String> lines) {
@@ -120,18 +156,112 @@ public final class KotlinInteropVerifier {
         return Optional.empty();
     }
 
-    private List<String> publicNoArgMethods(List<String> lines) {
-        List<String> methods = new ArrayList<>();
+    private Map<String, String> imports(List<String> lines) {
+        Map<String, String> imports = new HashMap<>();
+        for (String line : lines) {
+            Matcher matcher = IMPORT.matcher(line);
+            if (matcher.find()) {
+                String fqn = matcher.group(1);
+                imports.put(fqn.substring(fqn.lastIndexOf('.') + 1), fqn);
+            }
+        }
+        return imports;
+    }
+
+    private boolean hasNullMarked(List<String> lines) {
+        return lines.stream().anyMatch(line -> line.contains("@NullMarked")
+                || line.contains("@org.jspecify.annotations.NullMarked"));
+    }
+
+    private List<MethodAssertion> publicNoArgMethods(String qualifiedTypeName,
+                                                     List<String> lines,
+                                                     Map<String, String> imports,
+                                                     boolean nullMarked) {
+        List<MethodAssertion> methods = new ArrayList<>();
         for (String line : lines) {
             Matcher matcher = PUBLIC_NO_ARG_METHOD.matcher(line);
             if (matcher.find()) {
-                String method = matcher.group(1);
+                String method = matcher.group(2);
                 if (!method.equals("if") && !method.equals("for") && !method.equals("while")) {
-                    methods.add(method);
+                    String returnType = matcher.group(1).trim();
+                    methods.add(methodAssertion(qualifiedTypeName, method, returnType,
+                            imports, nullMarked));
                 }
             }
         }
         return methods;
+    }
+
+    private MethodAssertion methodAssertion(String qualifiedTypeName,
+                                            String methodName,
+                                            String javaReturnType,
+                                            Map<String, String> imports,
+                                            boolean nullMarked) {
+        Nullness nullness = nullness(javaReturnType, nullMarked);
+        String cleaned = cleanReturnType(javaReturnType);
+        if (cleaned.equals("void")) {
+            return new MethodAssertion(methodName, Optional.empty(), Optional.empty());
+        }
+        String kotlinType = kotlinType(cleaned, imports);
+        if (nullness == Nullness.NULLABLE) {
+            return new MethodAssertion(methodName, Optional.of(kotlinType + "?"), Optional.empty());
+        }
+        if (nullness == Nullness.NON_NULL) {
+            return new MethodAssertion(methodName, Optional.of(kotlinType), Optional.empty());
+        }
+        String warning = "KOTLIN_PLATFORM_TYPE_LEAK Method: " + qualifiedTypeName + "#"
+                + methodName + "() Expected: explicit nullness contract Observed: platform type "
+                + kotlinType + "! Recommendation: add @NullMarked to package or annotate return type.";
+        return new MethodAssertion(methodName, Optional.empty(), Optional.of(warning));
+    }
+
+    private Nullness nullness(String javaReturnType, boolean nullMarked) {
+        if (javaReturnType.contains("@Nullable")
+                || javaReturnType.contains("@org.jspecify.annotations.Nullable")) {
+            return Nullness.NULLABLE;
+        }
+        if (javaReturnType.contains("@NonNull")
+                || javaReturnType.contains("@org.jspecify.annotations.NonNull")
+                || nullMarked
+                || primitive(cleanReturnType(javaReturnType))) {
+            return Nullness.NON_NULL;
+        }
+        return Nullness.UNSPECIFIED;
+    }
+
+    private String cleanReturnType(String javaReturnType) {
+        return javaReturnType
+                .replaceAll("@[\\w.]+\\s*", "")
+                .replaceAll("\\b(static|final|synchronized|native|strictfp)\\b\\s*", "")
+                .replaceAll("<[^>]+>\\s*", "")
+                .trim();
+    }
+
+    private String kotlinType(String javaType, Map<String, String> imports) {
+        String arraySuffix = "";
+        while (javaType.endsWith("[]")) {
+            arraySuffix += ">";
+            javaType = "Array<" + javaType.substring(0, javaType.length() - 2).trim();
+        }
+        String mapped = switch (javaType) {
+            case "boolean" -> "Boolean";
+            case "byte" -> "Byte";
+            case "short" -> "Short";
+            case "int" -> "Int";
+            case "long" -> "Long";
+            case "float" -> "Float";
+            case "double" -> "Double";
+            case "char" -> "Char";
+            case "String", "java.lang.String" -> "String";
+            case "Object", "java.lang.Object" -> "Any";
+            default -> imports.getOrDefault(javaType, javaType);
+        };
+        return mapped + arraySuffix;
+    }
+
+    private boolean primitive(String javaType) {
+        return Set.of("boolean", "byte", "short", "int", "long", "float", "double", "char")
+                .contains(javaType);
     }
 
     private String compile(Path sampleFile,
@@ -217,5 +347,17 @@ public final class KotlinInteropVerifier {
                 report.toString(), StandardCharsets.UTF_8);
     }
 
-    private record ApiType(String qualifiedName, String simpleName, List<String> noArgMethods) {}
+    private enum Nullness { NON_NULL, NULLABLE, UNSPECIFIED }
+
+    private record MethodAssertion(
+            String name,
+            Optional<String> kotlinType,
+            Optional<String> warning
+    ) {}
+
+    private record ApiType(
+            String qualifiedName,
+            String simpleName,
+            List<MethodAssertion> noArgMethods
+    ) {}
 }
