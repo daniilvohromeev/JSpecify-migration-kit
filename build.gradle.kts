@@ -193,14 +193,8 @@ tasks.register("signingConfigurationCheck") {
 
 tasks.register("jmhSmoke") {
     group = "verification"
-    description = "Placeholder smoke gate for future JMH benchmarks; verifies benchmark scope is explicit."
-    inputs.file("build.gradle.kts")
-    doLast {
-        check(layout.projectDirectory.file("build.gradle.kts").asFile.readText()
-            .contains("version = \"0.1.0-SNAPSHOT\"")) {
-            "Project versioning must be defined before benchmark publication."
-        }
-    }
+    description = "Runs the JMH smoke benchmark suite."
+    dependsOn(":jspecify-core:jmhSmoke")
 }
 
 tasks.register("releaseQualityGate") {
