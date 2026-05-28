@@ -269,6 +269,10 @@ tasks.register("signingConfigurationCheck") {
             && workflow.contains("publishCentralPortal")) {
             "Release workflow must upload artifacts to the Central Portal Publisher API."
         }
+        check(workflow.contains("GRADLE_PUBLISH_KEY")
+            && workflow.contains(":jspecify-gradle-plugin:publishPlugins")) {
+            "Release workflow must publish the Gradle plugin to the Plugin Portal."
+        }
     }
 }
 

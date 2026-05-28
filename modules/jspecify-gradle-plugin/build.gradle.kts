@@ -1,5 +1,6 @@
 plugins {
     `java-gradle-plugin`
+    id("com.gradle.plugin-publish") version "2.1.1"
 }
 
 dependencies {
@@ -9,6 +10,8 @@ dependencies {
 }
 
 gradlePlugin {
+    website.set("https://github.com/daniilvohromeev/JSpecify-migration-kit")
+    vcsUrl.set("https://github.com/daniilvohromeev/JSpecify-migration-kit")
     plugins {
         create("jspecifyMigration") {
             id = "io.github.javamodernizationlabs.jspecify-migration"
@@ -16,6 +19,7 @@ gradlePlugin {
                 "io.github.javamodernizationlabs.jspecify.gradle.JspecifyMigrationPlugin"
             displayName = "JSpecify Migration Kit"
             description = "Plan and apply migrations to JSpecify null-safety annotations."
+            tags.set(listOf("jspecify", "nullness", "migration", "openrewrite"))
         }
     }
 }
