@@ -278,6 +278,9 @@ public final class JspecifyRewriter {
         Map<String, Path> packages = discoverPackages(project);
         for (var entry : packages.entrySet()) {
             String packageName = entry.getKey();
+            if (!shouldMarkPackage(project, packageName)) {
+                continue;
+            }
             Path packageDirectory = entry.getValue();
             Path packageInfo = packageDirectory.resolve("package-info.java");
             if (Files.isRegularFile(packageInfo)) {
@@ -310,6 +313,16 @@ public final class JspecifyRewriter {
                         1, List.of()));
             }
         }
+    }
+
+    private boolean shouldMarkPackage(ProjectModel project, String packageName) {
+        if (project.leaveUnmarkedPackages().stream()
+                .anyMatch(pattern -> project.packageMatches(pattern, packageName))) {
+            return false;
+        }
+        return project.markPackages().isEmpty()
+                || project.markPackages().stream()
+                .anyMatch(pattern -> project.packageMatches(pattern, packageName));
     }
 
     private Map<String, Path> discoverPackages(ProjectModel project) throws IOException {

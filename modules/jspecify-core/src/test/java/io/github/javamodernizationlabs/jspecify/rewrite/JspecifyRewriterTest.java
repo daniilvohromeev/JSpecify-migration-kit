@@ -1,6 +1,7 @@
 package io.github.javamodernizationlabs.jspecify.rewrite;
 
 import io.github.javamodernizationlabs.jspecify.ProjectModel;
+import io.github.javamodernizationlabs.jspecify.config.JspecifyConfig;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -76,6 +77,32 @@ class JspecifyRewriterTest {
         Path packageInfo = tmp.resolve("src/main/java/com/acme/package-info.java");
         assertEquals(1, result.changedFiles());
         assertTrue(Files.readString(packageInfo).contains("@NullMarked"));
+    }
+
+    @Test
+    void addsNullMarkedOnlyToPackagePolicyTargets(@TempDir Path tmp) throws IOException {
+        Path api = tmp.resolve("src/main/java/com/acme/api/Api.java");
+        Path service = tmp.resolve("src/main/java/com/acme/service/Service.java");
+        Path legacy = tmp.resolve("src/main/java/com/acme/legacy/Legacy.java");
+        Files.createDirectories(api.getParent());
+        Files.createDirectories(service.getParent());
+        Files.createDirectories(legacy.getParent());
+        Files.writeString(api, "package com.acme.api; public class Api {}\n");
+        Files.writeString(service, "package com.acme.service; public class Service {}\n");
+        Files.writeString(legacy, "package com.acme.legacy; public class Legacy {}\n");
+
+        JspecifyConfig config = new JspecifyConfig(
+                null, null, null, null, null, null,
+                List.of("com.acme.api"), List.of("com.acme.legacy"),
+                null, null, false, false, null, null, null,
+                false, false, null, false);
+        RewriteResult result = new JspecifyRewriter()
+                .rewrite(ProjectModel.of(tmp, config), List.of("add-null-marked"), true);
+
+        assertEquals(1, result.changedFiles());
+        assertTrue(Files.exists(api.getParent().resolve("package-info.java")));
+        assertTrue(!Files.exists(service.getParent().resolve("package-info.java")));
+        assertTrue(!Files.exists(legacy.getParent().resolve("package-info.java")));
     }
 
     @Test
