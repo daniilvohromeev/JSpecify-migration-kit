@@ -10,8 +10,8 @@ dependencies {
 }
 
 gradlePlugin {
-    website.set("https://github.com/daniilvohromeev/JSpecify-migration-kit")
-    vcsUrl.set("https://github.com/daniilvohromeev/JSpecify-migration-kit")
+    website.set("https://github.com/javamodernizationlabs/JSpecify-migration-kit")
+    vcsUrl.set("https://github.com/javamodernizationlabs/JSpecify-migration-kit")
     plugins {
         create("jspecifyMigration") {
             id = "io.github.javamodernizationlabs.jspecify-migration"

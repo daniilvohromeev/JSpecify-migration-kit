@@ -5,9 +5,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/daniilvohromeev/JSpecify-migration-kit/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/daniilvohromeev/JSpecify-migration-kit/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://github.com/daniilvohromeev/JSpecify-migration-kit/actions/workflows/jml.yml"><img alt="JML" src="https://github.com/daniilvohromeev/JSpecify-migration-kit/actions/workflows/jml.yml/badge.svg"></a>
-  <a href="https://github.com/daniilvohromeev/JSpecify-migration-kit/actions/workflows/security.yml"><img alt="Security" src="https://github.com/daniilvohromeev/JSpecify-migration-kit/actions/workflows/security.yml/badge.svg"></a>
+  <a href="https://github.com/javamodernizationlabs/JSpecify-migration-kit/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/javamodernizationlabs/JSpecify-migration-kit/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/javamodernizationlabs/JSpecify-migration-kit/actions/workflows/jml.yml"><img alt="JML" src="https://github.com/javamodernizationlabs/JSpecify-migration-kit/actions/workflows/jml.yml/badge.svg"></a>
+  <a href="https://github.com/javamodernizationlabs/JSpecify-migration-kit/actions/workflows/security.yml"><img alt="Security" src="https://github.com/javamodernizationlabs/JSpecify-migration-kit/actions/workflows/security.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
   <a href="https://docs.oracle.com/en/java/javase/21/"><img alt="Java 21+" src="https://img.shields.io/badge/Java-21%2B-007396.svg"></a>
   <a href="https://jspecify.dev/"><img alt="JSpecify 1.0" src="https://img.shields.io/badge/JSpecify-1.0.0-4b32c3.svg"></a>

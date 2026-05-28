@@ -98,7 +98,7 @@ subprojects {
                 pom {
                     name.set(publishedArtifactId)
                     description.set("JSpecify Migration Kit tooling for Java nullness migration.")
-                    url.set("https://github.com/daniilvohromeev/JSpecify-migration-kit")
+                    url.set("https://github.com/javamodernizationlabs/JSpecify-migration-kit")
                     licenses {
                         license {
                             name.set("Apache License, Version 2.0")
@@ -106,9 +106,9 @@ subprojects {
                         }
                     }
                     scm {
-                        connection.set("scm:git:git://github.com/daniilvohromeev/JSpecify-migration-kit.git")
-                        developerConnection.set("scm:git:ssh://github.com/daniilvohromeev/JSpecify-migration-kit.git")
-                        url.set("https://github.com/daniilvohromeev/JSpecify-migration-kit")
+                        connection.set("scm:git:git://github.com/javamodernizationlabs/JSpecify-migration-kit.git")
+                        developerConnection.set("scm:git:ssh://github.com/javamodernizationlabs/JSpecify-migration-kit.git")
+                        url.set("https://github.com/javamodernizationlabs/JSpecify-migration-kit")
                     }
                     developers {
                         developer {
