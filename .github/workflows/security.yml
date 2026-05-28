@@ -34,6 +34,5 @@ jobs:
           java-version: "21"
           cache: gradle
       - uses: gradle/actions/setup-gradle@v4
-      - run: ./gradlew build
+      - run: ./gradlew clean build --no-build-cache
       - uses: github/codeql-action/analyze@v3
-
