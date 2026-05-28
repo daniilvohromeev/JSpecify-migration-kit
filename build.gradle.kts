@@ -135,6 +135,13 @@ subprojects {
 val centralPortalPublicationTasks = subprojects.map {
     it.tasks.named("publishAllPublicationsToCentralPortalStagingRepository")
 }
+val mavenLocalPublicationTasks = subprojects.map {
+    it.tasks.named("publishToMavenLocal")
+}
+
+tasks.named("publishToMavenLocal") {
+    dependsOn(mavenLocalPublicationTasks)
+}
 
 val centralPortalBundle by tasks.registering(Zip::class) {
     group = "publishing"
@@ -271,9 +278,67 @@ tasks.register("jmhSmoke") {
     dependsOn(":jspecify-core:jmhSmoke")
 }
 
+val mavenExecutable = providers.environmentVariable("MAVEN_EXECUTABLE")
+    .orElse(providers.provider {
+        listOf("/opt/homebrew/bin/mvn", "/usr/local/bin/mvn", "mvn")
+            .firstOrNull { file(it).canExecute() } ?: "mvn"
+    })
+
+tasks.register("mavenInvokerSmoke") {
+    group = "verification"
+    description = "Runs a Maven CLI smoke test against the published Maven plugin."
+    dependsOn("publishToMavenLocal")
+    inputs.property("projectVersion", project.version.toString())
+    outputs.upToDateWhen { false }
+    doLast {
+        val smokeDir = layout.buildDirectory.dir("maven-invoker/jspecify-plan").get().asFile
+        delete(smokeDir)
+        val sourceDir = smokeDir.resolve("src/main/java/com/acme")
+        check(sourceDir.mkdirs()) {
+            "Unable to create Maven smoke source directory: $sourceDir"
+        }
+        smokeDir.resolve("pom.xml").writeText("""
+            <project xmlns="http://maven.apache.org/POM/4.0.0"
+                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+              <modelVersion>4.0.0</modelVersion>
+              <groupId>com.acme</groupId>
+              <artifactId>jspecify-maven-smoke</artifactId>
+              <version>1.0.0</version>
+            </project>
+            """.trimIndent() + "\n", Charsets.UTF_8)
+        sourceDir.resolve("Api.java").writeText("""
+            package com.acme;
+
+            import org.jetbrains.annotations.Nullable;
+
+            public class Api {
+                @Nullable
+                public String name() { return null; }
+            }
+            """.trimIndent() + "\n", Charsets.UTF_8)
+
+        providers.exec {
+            workingDir = smokeDir
+            commandLine(mavenExecutable.get(), "-q",
+                "io.github.javamodernizationlabs:"
+                    + "jspecify-migration-maven-plugin:${project.version}:plan")
+        }.result.get().assertNormalExitValue()
+
+        val report = smokeDir.resolve("target/reports/jml/jspecify/plan.md")
+        check(report.isFile) {
+            "Maven smoke did not write expected report: $report"
+        }
+        check(report.readText(Charsets.UTF_8).contains("org.jetbrains.annotations.Nullable")) {
+            "Maven smoke report did not include the expected annotation inventory."
+        }
+    }
+}
+
 tasks.register("releaseQualityGate") {
     group = "verification"
     description = "Runs the local release quality gates documented for JSpecify Migration Kit."
     dependsOn("build", "licenseCheck", "reproducibleBuildCheck",
-        "dependencyVulnerabilityCheck", "signingConfigurationCheck", "jmhSmoke")
+        "dependencyVulnerabilityCheck", "signingConfigurationCheck",
+        "jmhSmoke", "mavenInvokerSmoke")
 }

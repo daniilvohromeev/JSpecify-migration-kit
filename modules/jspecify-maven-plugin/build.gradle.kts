@@ -1,8 +1,5 @@
-// The Maven plugin Mojos are implemented as plain Java classes that depend on
-// Maven Plugin API. A real Maven plugin packaging step (plugin descriptor +
-// jar layout) is intentionally out of scope for the v0.1 build wiring — the
-// classes are publishable as a regular JAR and a follow-up task will wire the
-// `maven-plugin-plugin` equivalent via the maven-publish toolchain.
+import org.apache.tools.ant.filters.ReplaceTokens
+
 dependencies {
     implementation(project(":jspecify-core"))
     implementation(project(":jspecify-rewrite-recipes"))
@@ -15,4 +12,12 @@ dependencies {
     testImplementation("org.apache.maven.plugin-tools:maven-plugin-annotations:3.13.1")
     testImplementation("org.apache.maven:maven-core:3.9.9")
     testImplementation("org.apache.maven:maven-model:3.9.9")
+}
+
+tasks.named<Copy>("processResources") {
+    inputs.property("projectVersion", project.version.toString())
+    filesMatching("META-INF/maven/plugin.xml") {
+        filter<ReplaceTokens>("tokens" to mapOf(
+            "PROJECT_VERSION" to project.version.toString()))
+    }
 }

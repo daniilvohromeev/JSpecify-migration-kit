@@ -4,50 +4,341 @@
   <description>Plan and apply migrations to JSpecify null-safety annotations.</description>
   <groupId>io.github.javamodernizationlabs</groupId>
   <artifactId>jspecify-migration-maven-plugin</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>@PROJECT_VERSION@</version>
   <goalPrefix>jspecify-migration</goalPrefix>
+  <isolatedRealm>false</isolatedRealm>
+  <inheritedByDefault>true</inheritedByDefault>
   <mojos>
     <mojo>
       <goal>plan</goal>
-      <implementation>io.github.javamodernizationlabs.jspecify.maven.PlanMojo</implementation>
+      <description>Scans a Maven project and writes JSpecify migration reports.</description>
+      <requiresDirectInvocation>false</requiresDirectInvocation>
       <requiresProject>true</requiresProject>
+      <requiresReports>false</requiresReports>
+      <aggregator>false</aggregator>
+      <requiresOnline>false</requiresOnline>
+      <inheritedByDefault>true</inheritedByDefault>
+      <implementation>io.github.javamodernizationlabs.jspecify.maven.PlanMojo</implementation>
+      <language>java</language>
+      <instantiationStrategy>per-lookup</instantiationStrategy>
+      <executionStrategy>once-per-session</executionStrategy>
       <threadSafe>true</threadSafe>
+      <parameters>
+        <parameter>
+          <name>project</name>
+          <type>org.apache.maven.project.MavenProject</type>
+          <required>true</required>
+          <editable>false</editable>
+          <description>The current Maven project.</description>
+        </parameter>
+        <parameter>
+          <name>outputDirectory</name>
+          <type>java.io.File</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>Directory where JSpecify reports are written.</description>
+        </parameter>
+      </parameters>
+      <configuration>
+        <project implementation="org.apache.maven.project.MavenProject" default-value="${project}"/>
+        <outputDirectory implementation="java.io.File" default-value="${project.build.directory}/reports/jml/jspecify">${jspecify.outputDirectory}</outputDirectory>
+      </configuration>
     </mojo>
     <mojo>
       <goal>rewrite-dry-run</goal>
-      <implementation>io.github.javamodernizationlabs.jspecify.maven.RewriteDryRunMojo</implementation>
+      <description>Runs the JSpecify rewrite recipes without changing project files.</description>
+      <requiresDirectInvocation>false</requiresDirectInvocation>
       <requiresProject>true</requiresProject>
+      <requiresReports>false</requiresReports>
+      <aggregator>false</aggregator>
+      <requiresOnline>false</requiresOnline>
+      <inheritedByDefault>true</inheritedByDefault>
+      <implementation>io.github.javamodernizationlabs.jspecify.maven.RewriteDryRunMojo</implementation>
+      <language>java</language>
+      <instantiationStrategy>per-lookup</instantiationStrategy>
+      <executionStrategy>once-per-session</executionStrategy>
       <threadSafe>true</threadSafe>
+      <parameters>
+        <parameter>
+          <name>project</name>
+          <type>org.apache.maven.project.MavenProject</type>
+          <required>true</required>
+          <editable>false</editable>
+          <description>The current Maven project.</description>
+        </parameter>
+        <parameter>
+          <name>outputDirectory</name>
+          <type>java.io.File</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>Directory where JSpecify rewrite reports are written.</description>
+        </parameter>
+        <parameter>
+          <name>recipe</name>
+          <type>java.lang.String</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>OpenRewrite recipe to execute.</description>
+        </parameter>
+        <parameter>
+          <name>apply</name>
+          <type>boolean</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>Whether rewrite changes should be applied.</description>
+        </parameter>
+      </parameters>
+      <configuration>
+        <project implementation="org.apache.maven.project.MavenProject" default-value="${project}"/>
+        <outputDirectory implementation="java.io.File" default-value="${project.build.directory}/reports/jml/jspecify">${jspecify.outputDirectory}</outputDirectory>
+        <recipe implementation="java.lang.String" default-value="io.github.jml.jspecify.Migrate">${jspecify.recipe}</recipe>
+        <apply implementation="boolean" default-value="false">${jspecify.apply}</apply>
+      </configuration>
     </mojo>
     <mojo>
       <goal>rewrite-apply</goal>
-      <implementation>io.github.javamodernizationlabs.jspecify.maven.RewriteApplyMojo</implementation>
+      <description>Runs the JSpecify rewrite recipes and applies changes to project files.</description>
+      <requiresDirectInvocation>false</requiresDirectInvocation>
       <requiresProject>true</requiresProject>
+      <requiresReports>false</requiresReports>
+      <aggregator>false</aggregator>
+      <requiresOnline>false</requiresOnline>
+      <inheritedByDefault>true</inheritedByDefault>
+      <implementation>io.github.javamodernizationlabs.jspecify.maven.RewriteApplyMojo</implementation>
+      <language>java</language>
+      <instantiationStrategy>per-lookup</instantiationStrategy>
+      <executionStrategy>once-per-session</executionStrategy>
       <threadSafe>true</threadSafe>
+      <parameters>
+        <parameter>
+          <name>project</name>
+          <type>org.apache.maven.project.MavenProject</type>
+          <required>true</required>
+          <editable>false</editable>
+          <description>The current Maven project.</description>
+        </parameter>
+        <parameter>
+          <name>outputDirectory</name>
+          <type>java.io.File</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>Directory where JSpecify rewrite reports are written.</description>
+        </parameter>
+        <parameter>
+          <name>recipe</name>
+          <type>java.lang.String</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>OpenRewrite recipe to execute.</description>
+        </parameter>
+        <parameter>
+          <name>apply</name>
+          <type>boolean</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>Whether rewrite changes should be applied.</description>
+        </parameter>
+      </parameters>
+      <configuration>
+        <project implementation="org.apache.maven.project.MavenProject" default-value="${project}"/>
+        <outputDirectory implementation="java.io.File" default-value="${project.build.directory}/reports/jml/jspecify">${jspecify.outputDirectory}</outputDirectory>
+        <recipe implementation="java.lang.String" default-value="io.github.jml.jspecify.Migrate">${jspecify.recipe}</recipe>
+        <apply implementation="boolean" default-value="true">${jspecify.apply}</apply>
+      </configuration>
     </mojo>
     <mojo>
       <goal>coverage</goal>
-      <implementation>io.github.javamodernizationlabs.jspecify.maven.CoverageMojo</implementation>
+      <description>Writes a JSpecify annotation coverage report.</description>
+      <requiresDirectInvocation>false</requiresDirectInvocation>
       <requiresProject>true</requiresProject>
+      <requiresReports>false</requiresReports>
+      <aggregator>false</aggregator>
+      <requiresOnline>false</requiresOnline>
+      <inheritedByDefault>true</inheritedByDefault>
+      <implementation>io.github.javamodernizationlabs.jspecify.maven.CoverageMojo</implementation>
+      <language>java</language>
+      <instantiationStrategy>per-lookup</instantiationStrategy>
+      <executionStrategy>once-per-session</executionStrategy>
       <threadSafe>true</threadSafe>
+      <parameters>
+        <parameter>
+          <name>project</name>
+          <type>org.apache.maven.project.MavenProject</type>
+          <required>true</required>
+          <editable>false</editable>
+          <description>The current Maven project.</description>
+        </parameter>
+        <parameter>
+          <name>outputDirectory</name>
+          <type>java.io.File</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>Directory where JSpecify coverage reports are written.</description>
+        </parameter>
+      </parameters>
+      <configuration>
+        <project implementation="org.apache.maven.project.MavenProject" default-value="${project}"/>
+        <outputDirectory implementation="java.io.File" default-value="${project.build.directory}/reports/jml/jspecify">${jspecify.outputDirectory}</outputDirectory>
+      </configuration>
     </mojo>
     <mojo>
       <goal>nullaway-check</goal>
-      <implementation>io.github.javamodernizationlabs.jspecify.maven.NullAwayCheckMojo</implementation>
+      <description>Verifies Maven Compiler Error Prone and NullAway wiring.</description>
+      <requiresDirectInvocation>false</requiresDirectInvocation>
       <requiresProject>true</requiresProject>
+      <requiresReports>false</requiresReports>
+      <aggregator>false</aggregator>
+      <requiresOnline>false</requiresOnline>
+      <inheritedByDefault>true</inheritedByDefault>
+      <implementation>io.github.javamodernizationlabs.jspecify.maven.NullAwayCheckMojo</implementation>
+      <language>java</language>
+      <instantiationStrategy>per-lookup</instantiationStrategy>
+      <executionStrategy>once-per-session</executionStrategy>
       <threadSafe>true</threadSafe>
+      <parameters>
+        <parameter>
+          <name>project</name>
+          <type>org.apache.maven.project.MavenProject</type>
+          <required>true</required>
+          <editable>false</editable>
+          <description>The current Maven project.</description>
+        </parameter>
+        <parameter>
+          <name>outputDirectory</name>
+          <type>java.io.File</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>Directory where JSpecify NullAway reports are written.</description>
+        </parameter>
+        <parameter>
+          <name>enabled</name>
+          <type>boolean</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>Whether NullAway verification is enabled.</description>
+        </parameter>
+        <parameter>
+          <name>mode</name>
+          <type>java.lang.String</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>NullAway severity mode.</description>
+        </parameter>
+        <parameter>
+          <name>annotatedPackages</name>
+          <type>java.util.List</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>Packages configured as NullAway annotated packages.</description>
+        </parameter>
+        <parameter>
+          <name>excludedClasses</name>
+          <type>java.util.List</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>Classes excluded from NullAway checks.</description>
+        </parameter>
+      </parameters>
+      <configuration>
+        <project implementation="org.apache.maven.project.MavenProject" default-value="${project}"/>
+        <outputDirectory implementation="java.io.File" default-value="${project.build.directory}/reports/jml/jspecify">${jspecify.outputDirectory}</outputDirectory>
+        <enabled implementation="boolean" default-value="true">${jspecify.nullaway.enabled}</enabled>
+        <mode implementation="java.lang.String" default-value="warn">${jspecify.nullaway.mode}</mode>
+      </configuration>
     </mojo>
     <mojo>
       <goal>verify-kotlin</goal>
-      <implementation>io.github.javamodernizationlabs.jspecify.maven.VerifyKotlinMojo</implementation>
+      <description>Generates and optionally compiles Kotlin interop verification samples.</description>
+      <requiresDirectInvocation>false</requiresDirectInvocation>
       <requiresProject>true</requiresProject>
+      <requiresReports>false</requiresReports>
+      <aggregator>false</aggregator>
+      <requiresOnline>false</requiresOnline>
+      <inheritedByDefault>true</inheritedByDefault>
+      <implementation>io.github.javamodernizationlabs.jspecify.maven.VerifyKotlinMojo</implementation>
+      <language>java</language>
+      <instantiationStrategy>per-lookup</instantiationStrategy>
+      <executionStrategy>once-per-session</executionStrategy>
       <threadSafe>true</threadSafe>
+      <parameters>
+        <parameter>
+          <name>outputDirectory</name>
+          <type>java.io.File</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>Directory where Kotlin verification reports are written.</description>
+        </parameter>
+        <parameter>
+          <name>project</name>
+          <type>org.apache.maven.project.MavenProject</type>
+          <required>true</required>
+          <editable>false</editable>
+          <description>The current Maven project.</description>
+        </parameter>
+        <parameter>
+          <name>generateSamples</name>
+          <type>boolean</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>Whether Kotlin sample sources should be generated.</description>
+        </parameter>
+        <parameter>
+          <name>compile</name>
+          <type>boolean</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>Whether generated Kotlin samples should be compiled.</description>
+        </parameter>
+        <parameter>
+          <name>failOnWarnings</name>
+          <type>boolean</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>Whether Kotlin verification warnings fail the goal.</description>
+        </parameter>
+      </parameters>
+      <configuration>
+        <outputDirectory implementation="java.io.File" default-value="${project.build.directory}/reports/jml/jspecify/kotlin-verification">${jspecify.outputDirectory}</outputDirectory>
+        <project implementation="org.apache.maven.project.MavenProject" default-value="${project}"/>
+        <generateSamples implementation="boolean" default-value="true">${jspecify.kotlin.generateSamples}</generateSamples>
+        <compile implementation="boolean" default-value="false">${jspecify.kotlin.compile}</compile>
+        <failOnWarnings implementation="boolean" default-value="false">${jspecify.kotlin.failOnWarnings}</failOnWarnings>
+      </configuration>
     </mojo>
     <mojo>
       <goal>report</goal>
-      <implementation>io.github.javamodernizationlabs.jspecify.maven.ReportMojo</implementation>
+      <description>Writes JSpecify migration reports without console output.</description>
+      <requiresDirectInvocation>false</requiresDirectInvocation>
       <requiresProject>true</requiresProject>
+      <requiresReports>false</requiresReports>
+      <aggregator>false</aggregator>
+      <requiresOnline>false</requiresOnline>
+      <inheritedByDefault>true</inheritedByDefault>
+      <implementation>io.github.javamodernizationlabs.jspecify.maven.ReportMojo</implementation>
+      <language>java</language>
+      <instantiationStrategy>per-lookup</instantiationStrategy>
+      <executionStrategy>once-per-session</executionStrategy>
       <threadSafe>true</threadSafe>
+      <parameters>
+        <parameter>
+          <name>project</name>
+          <type>org.apache.maven.project.MavenProject</type>
+          <required>true</required>
+          <editable>false</editable>
+          <description>The current Maven project.</description>
+        </parameter>
+        <parameter>
+          <name>outputDirectory</name>
+          <type>java.io.File</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>Directory where JSpecify reports are written.</description>
+        </parameter>
+      </parameters>
+      <configuration>
+        <project implementation="org.apache.maven.project.MavenProject" default-value="${project}"/>
+        <outputDirectory implementation="java.io.File" default-value="${project.build.directory}/reports/jml/jspecify">${jspecify.outputDirectory}</outputDirectory>
+      </configuration>
     </mojo>
   </mojos>
 </plugin>
