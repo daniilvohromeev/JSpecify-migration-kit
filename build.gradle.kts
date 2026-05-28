@@ -1,3 +1,5 @@
+import java.util.Base64
+
 plugins {
     java
     `maven-publish`
@@ -11,10 +13,27 @@ val publishedArtifactIds = mapOf(
     "jspecify-gradle-plugin" to "jspecify-migration-gradle-plugin",
     "jspecify-maven-plugin" to "jspecify-migration-maven-plugin",
 )
+val projectVersion = providers.gradleProperty("projectVersion")
+    .orElse(providers.environmentVariable("JML_PROJECT_VERSION"))
+    .orElse("0.1.0-SNAPSHOT")
+val centralPortalStagingDirectory = layout.buildDirectory.dir(
+    "central-portal/staging/${projectVersion.get()}")
+val centralPortalToken = providers.gradleProperty("centralPortalToken")
+    .orElse(providers.environmentVariable("CENTRAL_PORTAL_TOKEN"))
+    .orElse(providers.gradleProperty("centralPortalUsername")
+        .orElse(providers.environmentVariable("CENTRAL_PORTAL_USERNAME"))
+        .zip(providers.gradleProperty("centralPortalPassword")
+            .orElse(providers.environmentVariable("CENTRAL_PORTAL_PASSWORD"))) { username, password ->
+            Base64.getEncoder().encodeToString(
+                "$username:$password".toByteArray(Charsets.UTF_8))
+        })
+val centralPortalPublishingType = providers.gradleProperty("centralPortalPublishingType")
+    .orElse(providers.environmentVariable("CENTRAL_PORTAL_PUBLISHING_TYPE"))
+    .orElse("USER_MANAGED")
 
 allprojects {
     group = "io.github.javamodernizationlabs"
-    version = "0.1.0-SNAPSHOT"
+    version = projectVersion.get()
 }
 
 subprojects {
@@ -93,6 +112,12 @@ subprojects {
                 }
             }
         }
+        repositories {
+            maven {
+                name = "centralPortalStaging"
+                url = centralPortalStagingDirectory.get().asFile.toURI()
+            }
+        }
     }
 
     extensions.configure<org.gradle.plugins.signing.SigningExtension> {
@@ -104,6 +129,47 @@ subprojects {
             useInMemoryPgpKeys(signingKey.get(), signingPassword.get())
         }
         sign(extensions.getByType<org.gradle.api.publish.PublishingExtension>().publications)
+    }
+}
+
+val centralPortalPublicationTasks = subprojects.map {
+    it.tasks.named("publishAllPublicationsToCentralPortalStagingRepository")
+}
+
+val centralPortalBundle by tasks.registering(Zip::class) {
+    group = "publishing"
+    description = "Builds a Maven Central Portal deployment bundle."
+    dependsOn(centralPortalPublicationTasks)
+    archiveFileName.set("central-portal-bundle-${project.version}.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("central-portal"))
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
+    from(centralPortalStagingDirectory)
+}
+
+tasks.register<Exec>("publishCentralPortal") {
+    group = "publishing"
+    description = "Uploads the Central Portal deployment bundle with the Publisher API."
+    dependsOn(centralPortalBundle)
+    inputs.file(centralPortalBundle.flatMap { it.archiveFile })
+    doFirst {
+        val token = centralPortalToken.orNull
+            ?: throw GradleException("Set CENTRAL_PORTAL_TOKEN or CENTRAL_PORTAL_USERNAME/"
+                + "CENTRAL_PORTAL_PASSWORD before publishing to Maven Central.")
+        commandLine(
+            "curl",
+            "--fail",
+            "--silent",
+            "--show-error",
+            "--request",
+            "POST",
+            "--header",
+            "Authorization: Bearer $token",
+            "--form",
+            "bundle=@${centralPortalBundle.get().archiveFile.get().asFile.absolutePath}",
+            "https://central.sonatype.com/api/v1/publisher/upload"
+                + "?publishingType=${centralPortalPublishingType.get()}"
+        )
     }
 }
 
@@ -167,7 +233,7 @@ tasks.register("dependencyVulnerabilityCheck") {
 
 tasks.register("signingConfigurationCheck") {
     group = "verification"
-    description = "Verifies release signing and provenance wiring are present."
+    description = "Verifies release signing, provenance and Central Portal wiring are present."
     inputs.files("build.gradle.kts", ".github/workflows/release.yml")
     doLast {
         val build = layout.projectDirectory.file("build.gradle.kts").asFile.readText()
@@ -176,6 +242,10 @@ tasks.register("signingConfigurationCheck") {
         }
         check(build.contains("signingInMemoryKey")) {
             "Gradle signing must support signingInMemoryKey properties."
+        }
+        check(build.contains("centralPortalBundle")
+            && build.contains("/api/v1/publisher/upload")) {
+            "Gradle release wiring must build and upload a Central Portal bundle."
         }
         val release = layout.projectDirectory.file(".github/workflows/release.yml").asFile
         check(release.isFile) {
@@ -187,6 +257,10 @@ tasks.register("signingConfigurationCheck") {
         }
         check(workflow.contains("provenance.json")) {
             "Release workflow must publish provenance metadata."
+        }
+        check(workflow.contains("CENTRAL_PORTAL_TOKEN")
+            && workflow.contains("publishCentralPortal")) {
+            "Release workflow must upload artifacts to the Central Portal Publisher API."
         }
     }
 }
