@@ -15,8 +15,10 @@
 
 <p align="center">
   <a href="#why-jspecify-migration-kit">Why</a> |
+  <a href="#installation">Installation</a> |
   <a href="#quick-start">Quick Start</a> |
   <a href="#build-integrations">Build Integrations</a> |
+  <a href="#release-artifacts">Release Artifacts</a> |
   <a href="#migration-playbook">Migration Playbook</a> |
   <a href="#configuration">Configuration</a> |
   <a href="#github-actions">GitHub Actions</a> |
@@ -32,6 +34,8 @@ observable, repeatable, and CI-friendly.
 It inventories existing annotations, rewrites safe cases, reports risky cases,
 generates NullAway configuration, and verifies what Kotlin callers will see
 after the migration.
+
+Latest release: [`v0.1.0`](https://github.com/javamodernizationlabs/JSpecify-migration-kit/releases/tag/v0.1.0).
 
 ## Why JSpecify Migration Kit?
 
@@ -49,14 +53,25 @@ This kit is built around a safer workflow:
 | Kotlin verification | Generates Kotlin-facing assertions so platform type leaks are visible before release. |
 | NullAway handoff | Produces Gradle/Error Prone snippets and a staged warn-to-error rollout path. |
 
-## Quick Start
+## Installation
 
-Install the local CLI from source:
+Use the released CLI distribution when you only need the command-line tool:
+
+```bash
+curl -L -o jml-cli-0.1.0.zip \
+  https://github.com/javamodernizationlabs/JSpecify-migration-kit/releases/download/v0.1.0/jml-cli-0.1.0.zip
+unzip -q jml-cli-0.1.0.zip
+JML="$PWD/jml-0.1.0/bin/jml"
+```
+
+For local development, install the CLI from source:
 
 ```bash
 ./gradlew :jspecify-cli:installDist
-JML=modules/jspecify-cli/build/install/jml/bin/jml
+JML="$PWD/modules/jspecify-cli/build/install/jml/bin/jml"
 ```
+
+## Quick Start
 
 Create a first migration plan:
 
@@ -127,7 +142,7 @@ jbang jml@jbang-catalog.json jspecify plan --project .
 
 ```kotlin
 plugins {
-    id("io.github.javamodernizationlabs.jspecify-migration") version "0.1.0-SNAPSHOT"
+    id("io.github.javamodernizationlabs.jspecify-migration") version "0.1.0"
 }
 
 jspecifyMigration {
@@ -177,7 +192,7 @@ jspecifyMigration {
 <plugin>
   <groupId>io.github.javamodernizationlabs</groupId>
   <artifactId>jspecify-migration-maven-plugin</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>0.1.0</version>
   <configuration>
     <jspecifyVersion>1.0.0</jspecifyVersion>
     <migrationMode>incremental</migrationMode>
@@ -209,7 +224,7 @@ rewrite {
 }
 
 dependencies {
-    rewrite("io.github.javamodernizationlabs:jspecify-migration-rewrite-recipes:0.1.0-SNAPSHOT")
+    rewrite("io.github.javamodernizationlabs:jspecify-migration-rewrite-recipes:0.1.0")
 }
 ```
 
@@ -226,6 +241,19 @@ Available recipe entry points:
 | `io.github.jml.jspecify.SpringPreset` | Spring-focused migration preset. |
 | `io.github.jml.jspecify.ReactorPreset` | Reactor-focused migration preset. |
 | `io.github.jml.jspecify.MicrometerPreset` | Micrometer-focused migration preset. |
+
+## Release Artifacts
+
+The `v0.1.0` release uses these user-facing assets and coordinates:
+
+| Surface | Coordinate or asset |
+| --- | --- |
+| CLI distribution | [`jml-cli-0.1.0.zip`](https://github.com/javamodernizationlabs/JSpecify-migration-kit/releases/download/v0.1.0/jml-cli-0.1.0.zip) and [`jml-cli-0.1.0.tar`](https://github.com/javamodernizationlabs/JSpecify-migration-kit/releases/download/v0.1.0/jml-cli-0.1.0.tar) |
+| CLI Maven artifact | `io.github.javamodernizationlabs:jml-cli:0.1.0` |
+| Core library | `io.github.javamodernizationlabs:jspecify-migration-core:0.1.0` |
+| OpenRewrite recipes | `io.github.javamodernizationlabs:jspecify-migration-rewrite-recipes:0.1.0` |
+| Maven plugin | `io.github.javamodernizationlabs:jspecify-migration-maven-plugin:0.1.0` |
+| Gradle plugin | `io.github.javamodernizationlabs.jspecify-migration` version `0.1.0` |
 
 ## Migration Playbook
 
@@ -425,11 +453,14 @@ local quality gates, and GitHub security scanning wiring.
 
 ## Project Status
 
-Current development version: `0.1.0-SNAPSHOT`.
+Latest release: [`v0.1.0`](https://github.com/javamodernizationlabs/JSpecify-migration-kit/releases/tag/v0.1.0).
+
+Current development branch version: `0.1.0-SNAPSHOT`.
 
 The kit is aimed at early adopters and library maintainers who want a practical
 JSpecify migration workflow before enforcing strict nullness gates everywhere.
-Expect the command surface to stabilize around the first tagged `0.1.x` release.
+Expect the command surface, report schema, and rewrite coverage to evolve across
+early `0.x` releases.
 
 ## Contributing
 

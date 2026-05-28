@@ -13,3 +13,12 @@ application {
     mainClass.set("io.github.javamodernizationlabs.jspecify.cli.JspecifyCli")
     applicationName = "jml"
 }
+
+tasks.jar {
+    manifest {
+        attributes(
+            "Implementation-Title" to "jml-cli",
+            "Implementation-Version" to project.version.toString()
+        )
+    }
+}

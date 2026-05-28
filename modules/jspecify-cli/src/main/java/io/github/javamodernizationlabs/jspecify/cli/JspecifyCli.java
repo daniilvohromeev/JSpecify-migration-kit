@@ -2,17 +2,29 @@ package io.github.javamodernizationlabs.jspecify.cli;
 
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.IVersionProvider;
 
 @Command(
         name = "jml",
         description = "Java Modernization Labs command line tools",
         mixinStandardHelpOptions = true,
-        version = "0.1.0-SNAPSHOT",
+        versionProvider = JspecifyCli.VersionProvider.class,
         subcommands = {
                 JspecifyCli.JspecifyCommand.class
         }
 )
 public class JspecifyCli implements Runnable {
+
+    public static class VersionProvider implements IVersionProvider {
+        @Override
+        public String[] getVersion() {
+            String version = JspecifyCli.class.getPackage().getImplementationVersion();
+            if (version == null || version.isBlank()) {
+                version = "0.1.0-SNAPSHOT";
+            }
+            return new String[] { version };
+        }
+    }
 
     @Override
     public void run() {
