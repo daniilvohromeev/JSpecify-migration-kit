@@ -2,6 +2,7 @@ package io.github.javamodernizationlabs.jspecify.gradle;
 
 import org.gradle.testfixtures.ProjectBuilder;
 import org.gradle.api.tasks.compile.JavaCompile;
+import org.gradle.testkit.runner.GradleRunner;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -30,6 +31,43 @@ class JspecifyMigrationPluginTest {
                     "Expected task missing: " + taskName);
         }
         assertNotNull(project.getExtensions().findByName("jspecifyMigration"));
+    }
+
+    @Test
+    void testKitRunsPlanTask(@TempDir Path tmp) throws Exception {
+        Files.writeString(tmp.resolve("settings.gradle.kts"),
+                "rootProject.name = \"jspecify-testkit-smoke\"\n");
+        Files.writeString(tmp.resolve("build.gradle.kts"),
+                """
+                plugins {
+                    java
+                    id("io.github.javamodernizationlabs.jspecify-migration")
+                }
+                """);
+        Path source = tmp.resolve("src/main/java/com/acme/Api.java");
+        Files.createDirectories(source.getParent());
+        Files.writeString(source,
+                """
+                package com.acme;
+
+                import org.jetbrains.annotations.Nullable;
+
+                public class Api {
+                    @Nullable
+                    public String name() { return null; }
+                }
+                """);
+
+        var result = GradleRunner.create()
+                .withProjectDir(tmp.toFile())
+                .withArguments("jspecifyPlan", "--stacktrace")
+                .withPluginClasspath()
+                .build();
+
+        assertTrue(result.getOutput().contains("JSpecify reports written"));
+        Path report = tmp.resolve("build/reports/jml/jspecify/plan.md");
+        assertTrue(Files.readString(report)
+                .contains("org.jetbrains.annotations.Nullable"));
     }
 
     @Test

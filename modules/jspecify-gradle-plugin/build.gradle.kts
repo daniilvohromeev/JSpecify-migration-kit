@@ -5,6 +5,7 @@ plugins {
 dependencies {
     implementation(project(":jspecify-core"))
     implementation(project(":jspecify-rewrite-recipes"))
+    testImplementation(gradleTestKit())
 }
 
 gradlePlugin {
