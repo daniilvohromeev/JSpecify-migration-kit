@@ -89,6 +89,7 @@ public final class JspecifyRewriter {
                         || normalized.equals("micrometer-preset")) {
                     recipes.add("convert-known-annotations");
                 } else if (normalized.endsWith(".addjspecifydependency")
+                        || normalized.endsWith(".adddependency")
                         || normalized.equals("add-dependency")
                         || normalized.equals("add-jspecify-dependency")) {
                     recipes.add("add-dependency");

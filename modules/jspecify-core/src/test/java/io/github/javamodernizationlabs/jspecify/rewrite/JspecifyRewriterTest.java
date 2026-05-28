@@ -59,7 +59,8 @@ class JspecifyRewriterTest {
         Files.writeString(build, "plugins { java }\n");
 
         RewriteResult result = new JspecifyRewriter()
-                .rewrite(ProjectModel.of(tmp), List.of("add-dependency"), true);
+                .rewrite(ProjectModel.of(tmp),
+                        List.of("io.github.jml.jspecify.AddDependency"), true);
 
         assertEquals(1, result.changedFiles());
         assertTrue(Files.readString(build).contains("compileOnly(\"org.jspecify:jspecify:1.0.0\")"));

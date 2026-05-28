@@ -31,6 +31,13 @@ recipeList:
   - io.github.jml.jspecify.AddGradleDependency
 ---
 type: specs.openrewrite.org/v1beta/recipe
+name: io.github.jml.jspecify.AddDependency
+displayName: Add JSpecify dependency
+description: Alias for io.github.jml.jspecify.AddJSpecifyDependency.
+recipeList:
+  - io.github.jml.jspecify.AddJSpecifyDependency
+---
+type: specs.openrewrite.org/v1beta/recipe
 name: io.github.jml.jspecify.ConvertKnownAnnotations
 displayName: Convert known nullness annotations to JSpecify
 description: |
