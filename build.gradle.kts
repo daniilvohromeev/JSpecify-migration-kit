@@ -85,9 +85,16 @@ subprojects {
 
     extensions.configure<org.gradle.api.publish.PublishingExtension> {
         publications {
-            create("mavenJava", org.gradle.api.publish.maven.MavenPublication::class.java) {
-                from(components["java"])
-                artifactId = publishedArtifactId
+            if (project.name != "jspecify-gradle-plugin") {
+                create("mavenJava", org.gradle.api.publish.maven.MavenPublication::class.java) {
+                    from(components["java"])
+                    artifactId = publishedArtifactId
+                }
+            }
+            withType<org.gradle.api.publish.maven.MavenPublication>().configureEach {
+                if (project.name == "jspecify-gradle-plugin" && name == "pluginMaven") {
+                    artifactId = publishedArtifactId
+                }
                 pom {
                     name.set(publishedArtifactId)
                     description.set("JSpecify Migration Kit tooling for Java nullness migration.")
