@@ -21,8 +21,7 @@ jobs:
             experimental: true
           - java: "26"
             experimental: true
-          - java: "27-ea"
-            experimental: true
+          # Gradle cannot run on JVM 27 yet; re-enable when the wrapper supports it.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

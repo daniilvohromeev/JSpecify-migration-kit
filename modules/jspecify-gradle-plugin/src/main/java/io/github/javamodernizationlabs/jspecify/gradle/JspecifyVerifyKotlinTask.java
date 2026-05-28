@@ -10,10 +10,12 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.work.DisableCachingByDefault;
 
 import java.io.IOException;
 import java.nio.file.Files;
 
+@DisableCachingByDefault(because = "Generates verification sources from local project API state.")
 public abstract class JspecifyVerifyKotlinTask extends DefaultTask {
 
     @Input

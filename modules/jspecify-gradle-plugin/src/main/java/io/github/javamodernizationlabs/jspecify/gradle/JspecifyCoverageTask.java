@@ -9,9 +9,11 @@ import org.gradle.api.DefaultTask;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.work.DisableCachingByDefault;
 
 import java.io.IOException;
 
+@DisableCachingByDefault(because = "Scans project sources and writes reports from local filesystem state.")
 public abstract class JspecifyCoverageTask extends DefaultTask {
 
     @OutputDirectory

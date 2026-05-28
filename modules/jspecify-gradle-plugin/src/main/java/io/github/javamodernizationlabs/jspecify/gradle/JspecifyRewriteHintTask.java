@@ -11,10 +11,12 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.work.DisableCachingByDefault;
 
 import java.io.IOException;
 import java.util.List;
 
+@DisableCachingByDefault(because = "May rewrite project files and writes reports from local filesystem state.")
 public abstract class JspecifyRewriteHintTask extends DefaultTask {
 
     @Input

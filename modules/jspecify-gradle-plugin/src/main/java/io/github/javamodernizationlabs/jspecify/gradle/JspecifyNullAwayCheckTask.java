@@ -9,6 +9,7 @@ import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.compile.JavaCompile;
+import org.gradle.work.DisableCachingByDefault;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -16,6 +17,7 @@ import java.nio.file.Files;
 import java.util.List;
 import java.util.Locale;
 
+@DisableCachingByDefault(because = "Inspects project task and dependency configuration.")
 public abstract class JspecifyNullAwayCheckTask extends DefaultTask {
 
     @Input
