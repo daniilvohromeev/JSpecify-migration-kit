@@ -20,7 +20,7 @@ public class JspecifyCli implements Runnable {
         public String[] getVersion() {
             String version = JspecifyCli.class.getPackage().getImplementationVersion();
             if (version == null || version.isBlank()) {
-                version = "0.1.0-SNAPSHOT";
+                version = "(development build)";
             }
             return new String[] { version };
         }
