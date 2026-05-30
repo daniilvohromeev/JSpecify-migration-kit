@@ -15,6 +15,16 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+/**
+ * Estimates JSpecify nullness coverage across a project's public API by
+ * scanning Java source files.
+ *
+ * <p>The analyzer uses lightweight regular-expression heuristics rather than a
+ * full parser. It counts public API elements, methods, parameters and generic
+ * type uses, and how many of each carry an explicit nullness contract (directly
+ * or via an enclosing {@code @NullMarked} scope), producing a
+ * {@link CoverageSummary}.
+ */
 public final class CoverageAnalyzer {
 
     private static final Pattern PUBLIC_TYPE = Pattern.compile(
@@ -27,6 +37,22 @@ public final class CoverageAnalyzer {
     private static final Pattern AMBIGUOUS = Pattern.compile("@\\w*Nullable\\s+\\w+[<].*[>]");
     private static final Pattern EXPORTS = Pattern.compile("^\\s*exports\\s+([\\w.]+)\\s*;");
 
+    /**
+     * Creates a {@code CoverageAnalyzer}.
+     */
+    public CoverageAnalyzer() {
+    }
+
+    /**
+     * Scans the project's source roots and computes its nullness-coverage
+     * metrics.
+     *
+     * @param project the project whose source roots and public-API rules drive
+     *     the scan
+     * @return a summary of the public-API nullness coverage
+     * @throws IOException if a source root cannot be walked or a file cannot be
+     *     read
+     */
     public CoverageSummary analyze(ProjectModel project) throws IOException {
         int publicApi = 0;
         int specified = 0;

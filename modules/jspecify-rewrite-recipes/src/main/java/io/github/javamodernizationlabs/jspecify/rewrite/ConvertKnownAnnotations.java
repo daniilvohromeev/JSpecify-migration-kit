@@ -17,11 +17,29 @@ import java.util.List;
  */
 public class ConvertKnownAnnotations extends Recipe {
 
+    /**
+     * Creates a {@code ConvertKnownAnnotations} recipe.
+     */
+    public ConvertKnownAnnotations() {
+    }
+
+    /**
+     * Returns the human-readable display name shown for this recipe in
+     * OpenRewrite tooling.
+     *
+     * @return the recipe display name
+     */
     @Override
     public String getDisplayName() {
         return "Convert known nullness annotations to JSpecify";
     }
 
+    /**
+     * Returns the description explaining which legacy nullness annotations this
+     * recipe converts and which cases it intentionally leaves unchanged.
+     *
+     * @return the recipe description
+     */
     @Override
     public String getDescription() {
         return "Rewrites imports and references of well-known legacy nullness annotations "
@@ -30,6 +48,14 @@ public class ConvertKnownAnnotations extends Recipe {
                 + "left unchanged and reported instead.";
     }
 
+    /**
+     * Builds the list of sub-recipes that perform the conversion, composing one
+     * {@link ChangeType} recipe per legacy-to-JSpecify mapping declared in the
+     * default {@link AnnotationCatalog}.
+     *
+     * @return the composed list of {@link ChangeType} recipes, one per known
+     *         annotation mapping
+     */
     @Override
     public List<Recipe> getRecipeList() {
         List<Recipe> recipes = new ArrayList<>();

@@ -20,8 +20,21 @@ import org.apache.maven.project.MavenProject;
 
 import java.io.File;
 
+/**
+ * Implements the {@code jspecify:report} goal.
+ *
+ * <p>This goal scans the current Maven project for JSpecify nullness annotations and builds a
+ * migration plan, then writes the plan to the configured output directory in JSON, Markdown, SARIF,
+ * HTML, and JUnit XML formats. Unlike {@link PlanMojo}, it does not print a console summary.
+ */
 @Mojo(name = "report", threadSafe = true, requiresProject = true)
 public class ReportMojo extends AbstractMojo {
+
+    /**
+     * Creates a {@code ReportMojo}.
+     */
+    public ReportMojo() {
+    }
 
     @Parameter(defaultValue = "${project}", readonly = true, required = true)
     private MavenProject project;
@@ -30,13 +43,22 @@ public class ReportMojo extends AbstractMojo {
             defaultValue = "${project.build.directory}/reports/jml/jspecify")
     private File outputDirectory;
 
+    /**
+     * Runs the {@code jspecify:report} goal.
+     *
+     * <p>Loads the JSpecify configuration, scans the project for nullness annotations, computes a
+     * migration plan, and writes the plan reports to the configured output directory.
+     *
+     * @throws MojoExecutionException if the configuration cannot be loaded, the project cannot be
+     *     scanned, or any report fails to be written
+     */
     @Override
     public void execute() throws MojoExecutionException {
         try {
             var projectRoot = project.getBasedir().toPath();
             JspecifyConfig config = JspecifyConfigLoader.load(projectRoot);
             ProjectModel model = ProjectModel.of(projectRoot, config);
-            AnnotationInventory inventory = new AnnotationScanner().scan(model);
+            AnnotationInventory inventory = AnnotationScanner.forConfig(config).scan(model);
             MigrationPlan plan = new MigrationPlanner().plan(inventory);
 
             var out = outputDirectory.toPath();

@@ -13,12 +13,30 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+/**
+ * The {@code verify-kotlin} command, which generates and optionally compiles Kotlin interop
+ * verification artifacts for a migrated Java project.
+ *
+ * <p>It inspects the project rooted at {@code --project} and, when {@code --generate-samples}
+ * is set (or sample generation is enabled in configuration), produces Kotlin sources that
+ * exercise the project's public API nullness contracts under the directory selected by
+ * {@code --output-dir}. When {@code --compile} is set the samples are compiled against the
+ * classpath given by {@code --classpath} (auto-detected from common build output directories
+ * when omitted). With {@code --fail-on-warnings} the command returns a non-zero exit code if
+ * verification emits any warnings.</p>
+ */
 @Command(
         name = "verify-kotlin",
         description = "Generate Kotlin interop verification artifacts.",
         mixinStandardHelpOptions = true
 )
 public class VerifyKotlinCommand implements Callable<Integer> {
+
+    /**
+     * Creates a {@code VerifyKotlinCommand}.
+     */
+    public VerifyKotlinCommand() {
+    }
 
     @Option(names = {"--project"}, defaultValue = ".") Path project;
     @Option(names = {"--generate-samples"}) boolean generateSamples;
@@ -29,6 +47,17 @@ public class VerifyKotlinCommand implements Callable<Integer> {
     @Option(names = {"--classpath"}, split = ",") List<Path> classpath;
     @Option(names = {"--output-dir"}) Path output;
 
+    /**
+     * Generates the Kotlin interop verification artifacts, optionally compiles them and
+     * reports any warnings.
+     *
+     * <p>Returns {@code 1} when warnings are produced and failing on warnings is requested,
+     * and {@code 0} otherwise.</p>
+     *
+     * @return the process exit code: {@code 1} when warnings are present and failing on
+     *         warnings is enabled, {@code 0} otherwise
+     * @throws Exception if loading the project, generating samples or compiling them fails
+     */
     @Override
     public Integer call() throws Exception {
         Path projectRoot = project.toAbsolutePath().normalize();

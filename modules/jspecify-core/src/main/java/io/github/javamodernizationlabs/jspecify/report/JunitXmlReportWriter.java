@@ -9,8 +9,27 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+/**
+ * Renders a {@link MigrationPlan} as a JUnit-style XML report.
+ *
+ * <p>Each issue becomes a {@code testcase}; issues at or above
+ * {@link Severity#HIGH} are emitted as failures so CI systems that consume
+ * JUnit XML can surface them. Text is XML-escaped before output.
+ */
 public final class JunitXmlReportWriter {
 
+    /**
+     * Creates a {@code JunitXmlReportWriter}.
+     */
+    public JunitXmlReportWriter() {
+    }
+
+    /**
+     * Renders the migration plan as a JUnit XML string.
+     *
+     * @param plan the migration plan to render
+     * @return the report as a JUnit XML document
+     */
     public String render(MigrationPlan plan) {
         int failures = (int) plan.issues().stream()
                 .filter(i -> i.severity().atLeast(Severity.HIGH))
@@ -40,6 +59,14 @@ public final class JunitXmlReportWriter {
         return sb.toString();
     }
 
+    /**
+     * Renders the plan and writes it to the given file, creating parent
+     * directories as needed.
+     *
+     * @param output the file path to write the JUnit XML report to
+     * @param plan the migration plan to render
+     * @throws IOException if the parent directories or file cannot be written
+     */
     public void write(Path output, MigrationPlan plan) throws IOException {
         Files.createDirectories(output.getParent());
         Files.writeString(output, render(plan), StandardCharsets.UTF_8);

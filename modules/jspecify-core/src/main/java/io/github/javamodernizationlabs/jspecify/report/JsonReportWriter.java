@@ -14,8 +14,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Serializes a {@link MigrationPlan} to a JSON document.
+ *
+ * <p>The output captures the estimated risk, scan counts, recommended phases
+ * and the full issue list, and can be written directly to a file.
+ */
 public final class JsonReportWriter {
 
+    /**
+     * Creates a {@code JsonReportWriter}.
+     */
+    public JsonReportWriter() {
+    }
+
+    /**
+     * Renders the migration plan as a JSON string.
+     *
+     * @param plan the migration plan to serialize
+     * @return the plan encoded as a JSON object
+     */
     public String render(MigrationPlan plan) {
         StringBuilder sb = new StringBuilder();
         sb.append('{');
@@ -35,6 +53,14 @@ public final class JsonReportWriter {
         return sb.toString();
     }
 
+    /**
+     * Renders the plan and writes it to the given file, creating parent
+     * directories as needed.
+     *
+     * @param output the file path to write the JSON report to
+     * @param plan the migration plan to serialize
+     * @throws IOException if the parent directories or file cannot be written
+     */
     public void write(Path output, MigrationPlan plan) throws IOException {
         Files.createDirectories(output.getParent());
         Files.writeString(output, render(plan), StandardCharsets.UTF_8);

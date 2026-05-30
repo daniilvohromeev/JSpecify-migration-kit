@@ -4,6 +4,7 @@ import io.github.javamodernizationlabs.jspecify.AnnotationCatalog;
 import io.github.javamodernizationlabs.jspecify.AnnotationInventory;
 import io.github.javamodernizationlabs.jspecify.Location;
 import io.github.javamodernizationlabs.jspecify.ProjectModel;
+import io.github.javamodernizationlabs.jspecify.config.JspecifyConfig;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -35,14 +36,50 @@ public final class AnnotationScanner {
 
     private final AnnotationCatalog catalog;
 
+    /**
+     * Creates a scanner backed by the default annotation catalog.
+     *
+     * <p>Custom {@code annotationMappings} from configuration are ignored; prefer
+     * {@link #forConfig(JspecifyConfig)} when configuration is available.
+     */
     public AnnotationScanner() {
         this(AnnotationCatalog.defaults());
     }
 
+    /**
+     * Creates a scanner backed by the given annotation catalog.
+     *
+     * @param catalog the catalog of known nullness annotations to recognize
+     */
     public AnnotationScanner(AnnotationCatalog catalog) {
         this.catalog = catalog;
     }
 
+    /**
+     * Creates a scanner whose catalog reflects the supplied configuration's
+     * annotation mappings.
+     *
+     * <p>Use this factory at every entry point (CLI, Gradle, Maven) so that
+     * custom {@code annotationMappings} declared in {@code jspecify.yml} are
+     * honored consistently; constructing a bare {@link #AnnotationScanner()}
+     * silently falls back to {@link AnnotationCatalog#defaults()} and ignores
+     * user configuration.
+     *
+     * @param config the loaded JSpecify configuration; never {@code null}
+     * @return a scanner backed by the configuration's annotation catalog
+     */
+    public static AnnotationScanner forConfig(JspecifyConfig config) {
+        return new AnnotationScanner(new AnnotationCatalog(config.annotationMappings()));
+    }
+
+    /**
+     * Scans every Java source file under the project's source roots and tallies the
+     * known nullness annotations it finds.
+     *
+     * @param project the project describing source roots, excludes, and scan policy
+     * @return an inventory of annotation usages and the number of files scanned
+     * @throws IOException if a source root or file cannot be read
+     */
     public AnnotationInventory scan(ProjectModel project) throws IOException {
         Map<String, Integer> totals = new LinkedHashMap<>();
         Map<String, List<Location>> locations = new LinkedHashMap<>();

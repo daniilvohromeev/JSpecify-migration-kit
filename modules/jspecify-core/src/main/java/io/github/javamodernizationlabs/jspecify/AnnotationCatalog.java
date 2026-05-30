@@ -10,31 +10,63 @@ import java.util.Set;
  */
 public final class AnnotationCatalog {
 
+    /** Fully qualified name of the JSpecify {@code @Nullable} annotation. */
     public static final String JSPECIFY_NULLABLE = "org.jspecify.annotations.Nullable";
+    /** Fully qualified name of the JSpecify {@code @NonNull} annotation. */
     public static final String JSPECIFY_NON_NULL = "org.jspecify.annotations.NonNull";
+    /** Fully qualified name of the JSpecify {@code @NullMarked} annotation. */
     public static final String JSPECIFY_NULL_MARKED = "org.jspecify.annotations.NullMarked";
+    /** Fully qualified name of the JSpecify {@code @NullUnmarked} annotation. */
     public static final String JSPECIFY_NULL_UNMARKED = "org.jspecify.annotations.NullUnmarked";
 
     private static final Map<String, String> DEFAULT_MAPPINGS = defaultMappings();
 
     private final Map<String, String> mappings;
 
+    /**
+     * Creates a catalog from a mapping of legacy annotation fully qualified names
+     * to their JSpecify counterparts.
+     *
+     * @param mappings legacy-to-JSpecify annotation name mappings; copied defensively
+     */
     public AnnotationCatalog(Map<String, String> mappings) {
         this.mappings = Map.copyOf(mappings);
     }
 
+    /**
+     * Returns a catalog populated with the built-in default annotation mappings.
+     *
+     * @return a catalog backed by the default legacy-to-JSpecify mappings
+     */
     public static AnnotationCatalog defaults() {
         return new AnnotationCatalog(DEFAULT_MAPPINGS);
     }
 
+    /**
+     * Returns the legacy-to-JSpecify annotation mappings held by this catalog.
+     *
+     * @return an unmodifiable map from legacy annotation name to JSpecify name
+     */
     public Map<String, String> mappings() {
         return mappings;
     }
 
+    /**
+     * Returns the set of legacy annotation fully qualified names known to this catalog.
+     *
+     * @return an unmodifiable set of recognized legacy annotation names
+     */
     public Set<String> knownLegacyAnnotations() {
         return mappings.keySet();
     }
 
+    /**
+     * Resolves the JSpecify nullness semantics implied by a legacy annotation.
+     *
+     * @param legacyFqn the fully qualified name of a legacy nullness annotation
+     * @return the corresponding {@link Nullness}, or {@link Nullness#UNKNOWN} if the
+     *         annotation is not mapped by this catalog
+     */
     public Nullness targetSemantics(String legacyFqn) {
         String target = mappings.get(legacyFqn);
         if (target == null) {

@@ -14,12 +14,29 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+/**
+ * The {@code rewrite} command, which applies JSpecify migration recipes to a project's
+ * sources.
+ *
+ * <p>It runs the recipes named by {@code --recipe} (for example
+ * {@code add-dependency,convert-known-annotations}) against the project rooted at
+ * {@code --project}. Exactly one of {@code --dry-run} (preview the planned changes only) or
+ * {@code --apply} (modify files in place) must be supplied. A Markdown rewrite report
+ * summarising changed files, replacements and warnings is written to the directory selected
+ * by {@code --output-dir}.</p>
+ */
 @Command(
         name = "rewrite",
         description = "Apply OpenRewrite recipes via the OpenRewrite Maven/Gradle plugin.",
         mixinStandardHelpOptions = true
 )
 public class RewriteCommand implements Callable<Integer> {
+
+    /**
+     * Creates a {@code RewriteCommand}.
+     */
+    public RewriteCommand() {
+    }
 
     @Option(names = {"--project"}, description = "Project root (default: current directory)",
             defaultValue = ".")
@@ -38,6 +55,16 @@ public class RewriteCommand implements Callable<Integer> {
 
     @Option(names = {"--output-dir"}) Path outputDir;
 
+    /**
+     * Validates the run mode, applies the requested recipes and writes the rewrite report.
+     *
+     * <p>Returns {@code 2} when neither or both of {@code --dry-run} and {@code --apply} are
+     * supplied, and {@code 0} once the recipes have been processed and the report written.</p>
+     *
+     * @return the process exit code: {@code 0} on success, {@code 2} on an invalid mode
+     *         selection
+     * @throws Exception if loading the project, running the recipes or writing the report fails
+     */
     @Override
     public Integer call() throws Exception {
         if (apply == dryRun) {

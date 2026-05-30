@@ -8,8 +8,26 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+/**
+ * Renders a {@link MigrationPlan} as a self-contained HTML report.
+ *
+ * <p>The generated document embeds its own styling and tabulates the annotation
+ * counts, recommended phases and issues. Text is HTML-escaped before output.
+ */
 public final class HtmlReportWriter {
 
+    /**
+     * Creates an {@code HtmlReportWriter}.
+     */
+    public HtmlReportWriter() {
+    }
+
+    /**
+     * Renders the migration plan as a complete HTML document.
+     *
+     * @param plan the migration plan to render
+     * @return the report as an HTML string
+     */
     public String render(MigrationPlan plan) {
         StringBuilder sb = new StringBuilder();
         sb.append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">");
@@ -66,6 +84,14 @@ public final class HtmlReportWriter {
         return sb.toString();
     }
 
+    /**
+     * Renders the plan and writes it to the given file, creating parent
+     * directories as needed.
+     *
+     * @param output the file path to write the HTML report to
+     * @param plan the migration plan to render
+     * @throws IOException if the parent directories or file cannot be written
+     */
     public void write(Path output, MigrationPlan plan) throws IOException {
         Files.createDirectories(output.getParent());
         Files.writeString(output, render(plan), StandardCharsets.UTF_8);

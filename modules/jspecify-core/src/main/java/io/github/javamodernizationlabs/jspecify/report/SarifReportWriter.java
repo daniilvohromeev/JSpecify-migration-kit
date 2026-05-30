@@ -14,8 +14,27 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Renders a {@link MigrationPlan} as a SARIF 2.1.0 document.
+ *
+ * <p>Issues are emitted as SARIF results with physical locations, rule
+ * metadata and stable fingerprints so the output can be consumed by code
+ * scanning platforms. Severities are mapped to SARIF levels.
+ */
 public final class SarifReportWriter {
 
+    /**
+     * Creates a {@code SarifReportWriter}.
+     */
+    public SarifReportWriter() {
+    }
+
+    /**
+     * Renders the migration plan as a SARIF JSON string.
+     *
+     * @param plan the migration plan to render
+     * @return the report as a SARIF 2.1.0 document
+     */
     public String render(MigrationPlan plan) {
         Set<String> ruleIds = plan.issues().stream()
                 .map(i -> i.ruleId().value())
@@ -104,6 +123,14 @@ public final class SarifReportWriter {
         };
     }
 
+    /**
+     * Renders the plan and writes it to the given file, creating parent
+     * directories as needed.
+     *
+     * @param output the file path to write the SARIF report to
+     * @param plan the migration plan to render
+     * @throws IOException if the parent directories or file cannot be written
+     */
     public void write(Path output, MigrationPlan plan) throws IOException {
         Files.createDirectories(output.getParent());
         Files.writeString(output, render(plan), StandardCharsets.UTF_8);

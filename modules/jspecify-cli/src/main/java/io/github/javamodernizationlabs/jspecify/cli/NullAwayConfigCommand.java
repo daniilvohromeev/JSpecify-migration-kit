@@ -11,12 +11,29 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+/**
+ * The {@code nullaway-config} command, which generates NullAway and Error Prone
+ * configuration snippets for a project.
+ *
+ * <p>It produces a Gradle Kotlin DSL block that configures NullAway for the project rooted at
+ * {@code --project}, using the check severity implied by {@code --mode}, the annotated
+ * packages from {@code --annotated-packages} and the exclusions from
+ * {@code --excluded-classes}. The snippet is written to {@code nullaway.gradle.kts} under the
+ * directory selected by {@code --output-dir}; when {@code --apply} is given the block is also
+ * merged into the project's {@code build.gradle.kts}.</p>
+ */
 @Command(
         name = "nullaway-config",
         description = "Generate NullAway/Error Prone configuration snippets.",
         mixinStandardHelpOptions = true
 )
 public class NullAwayConfigCommand implements Callable<Integer> {
+
+    /**
+     * Creates a {@code NullAwayConfigCommand}.
+     */
+    public NullAwayConfigCommand() {
+    }
 
     @Option(names = {"--project"}, defaultValue = ".") Path project;
     @Option(names = {"--mode"}) String mode;
@@ -26,6 +43,13 @@ public class NullAwayConfigCommand implements Callable<Integer> {
     boolean apply;
     @Option(names = {"--output-dir"}) Path output;
 
+    /**
+     * Generates the NullAway Gradle snippet, writes it to disk and optionally merges it into
+     * the project build file.
+     *
+     * @return the process exit code; always {@code 0} on successful generation
+     * @throws Exception if loading the project configuration or writing the snippet fails
+     */
     @Override
     public Integer call() throws Exception {
         Path projectRoot = project.toAbsolutePath().normalize();

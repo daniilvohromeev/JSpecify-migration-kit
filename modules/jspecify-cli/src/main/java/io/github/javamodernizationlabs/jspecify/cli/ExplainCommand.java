@@ -6,12 +6,26 @@ import picocli.CommandLine.Parameters;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
+/**
+ * The {@code explain} command, which prints a human-readable explanation of a JSpecify
+ * Migration Kit rule id.
+ *
+ * <p>It looks up the rule id supplied as the sole positional parameter (for example
+ * {@code jspecify.old-nullness-annotation}) and prints its severity, rationale and any
+ * recommended actions. Unknown rule ids produce an error and a non-zero exit code.</p>
+ */
 @Command(
         name = "explain",
         description = "Explain a JSpecify Migration Kit rule id.",
         mixinStandardHelpOptions = true
 )
 public class ExplainCommand implements Callable<Integer> {
+
+    /**
+     * Creates an {@code ExplainCommand}.
+     */
+    public ExplainCommand() {
+    }
 
     @Parameters(arity = "1", description = "Rule id, e.g. jspecify.old-nullness-annotation.")
     String ruleId;
@@ -92,6 +106,15 @@ public class ExplainCommand implements Callable<Integer> {
             """
     );
 
+    /**
+     * Prints the explanation for the requested rule id.
+     *
+     * <p>Returns {@code 2} when the rule id is not recognised, and {@code 0} after printing a
+     * known rule's explanation.</p>
+     *
+     * @return the process exit code: {@code 0} for a known rule id, {@code 2} for an unknown
+     *         rule id
+     */
     @Override
     public Integer call() {
         String body = EXPLAIN.get(ruleId);

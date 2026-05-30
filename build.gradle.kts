@@ -78,6 +78,15 @@ subprojects {
         options.compilerArgs.addAll(listOf("-Xlint:all", "-parameters"))
     }
 
+    tasks.withType<Javadoc>().configureEach {
+        (options as org.gradle.external.javadoc.StandardJavadocDocletOptions).apply {
+            encoding = "UTF-8"
+            // Fail the build on any missing or malformed Javadoc on the public API.
+            addBooleanOption("Xdoclint:all", true)
+            addBooleanOption("Xwerror", true)
+        }
+    }
+
     tasks.withType<Jar>().configureEach {
         isPreserveFileTimestamps = false
         isReproducibleFileOrder = true

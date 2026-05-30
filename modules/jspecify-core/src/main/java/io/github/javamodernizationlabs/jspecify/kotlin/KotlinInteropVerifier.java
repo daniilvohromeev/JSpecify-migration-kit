@@ -18,6 +18,16 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+/**
+ * Verifies how a project's public Java API surfaces in Kotlin under JSpecify
+ * nullness contracts.
+ *
+ * <p>The verifier scans public types, infers the Kotlin-visible nullness of
+ * their no-argument methods, and generates a Kotlin sample file that exercises
+ * the API. Methods without an explicit nullness contract are reported as
+ * platform-type leaks. The samples can optionally be compiled with
+ * {@code kotlinc} when it is available on the {@code PATH}.
+ */
 public final class KotlinInteropVerifier {
 
     private static final Pattern PACKAGE = Pattern.compile("^\\s*package\\s+([\\w.]+)\\s*;");
@@ -27,6 +37,28 @@ public final class KotlinInteropVerifier {
             "\\bpublic\\s+(.+?)\\s+(\\w+)\\s*\\(\\s*\\)\\s*(?:throws\\s+[\\w.,\\s]+)?[;{]");
     private static final Pattern IMPORT = Pattern.compile("^\\s*import\\s+([\\w.]+)\\s*;");
 
+    /**
+     * Creates a {@code KotlinInteropVerifier}.
+     */
+    public KotlinInteropVerifier() {
+    }
+
+    /**
+     * Generates and optionally compiles Kotlin interop samples for the
+     * project's public API and writes a verification report.
+     *
+     * @param project the project whose public API is verified
+     * @param outputDirectory the directory to write generated samples and the
+     *     report into; created if it does not exist
+     * @param generateSamples whether to write the generated Kotlin sample file
+     * @param compileSamples whether to compile the samples with {@code kotlinc}
+     *     (samples are generated first if needed)
+     * @param classpath additional classpath entries passed to {@code kotlinc};
+     *     may be {@code null} or empty
+     * @return the result describing what was generated, the compile status and
+     *     any warnings
+     * @throws IOException if the output directory or any file cannot be written
+     */
     public KotlinVerificationResult verify(ProjectModel project,
                                            Path outputDirectory,
                                            boolean generateSamples,

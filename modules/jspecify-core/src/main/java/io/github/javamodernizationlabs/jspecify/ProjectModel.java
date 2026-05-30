@@ -11,6 +11,29 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
+/**
+ * An immutable description of a project to be scanned or rewritten.
+ *
+ * <p>Captures the project root, the Java source roots to traverse, path-exclusion
+ * globs, package-marking policy, public API selectors, and traversal options. The
+ * {@code of(...)} factories discover source roots and apply configuration defaults.
+ *
+ * @param name a display name for the project, derived from the root directory name
+ * @param rootDirectory the absolute, normalized project root directory
+ * @param sourceRoots the Java source roots to traverse; defensively copied
+ * @param excludedPathPatterns glob patterns for paths to skip; defensively copied
+ * @param markPackages glob patterns for packages eligible for {@code @NullMarked};
+ *        defensively copied
+ * @param leaveUnmarkedPackages glob patterns for packages to leave unmarked;
+ *        defensively copied
+ * @param publicApiIncludes glob patterns selecting public API packages;
+ *        defensively copied
+ * @param publicApiExcludes glob patterns excluding packages from the public API;
+ *        defensively copied
+ * @param publicApiJpmsExportsOnly whether the public API is limited to JPMS-exported
+ *        packages
+ * @param followSymlinks whether symbolic links are followed during traversal
+ */
 public record ProjectModel(
         String name,
         Path rootDirectory,
@@ -23,6 +46,10 @@ public record ProjectModel(
         boolean publicApiJpmsExportsOnly,
         boolean followSymlinks
 ) {
+    /**
+     * Canonical constructor that normalizes the root directory and defensively
+     * copies the list components, substituting empty lists for {@code null}.
+     */
     public ProjectModel {
         rootDirectory = rootDirectory.toAbsolutePath().normalize();
         sourceRoots = sourceRoots == null ? List.of() : List.copyOf(sourceRoots);
@@ -37,10 +64,23 @@ public record ProjectModel(
         publicApiExcludes = publicApiExcludes == null ? List.of() : List.copyOf(publicApiExcludes);
     }
 
+    /**
+     * Creates a project model rooted at the given directory using default configuration.
+     *
+     * @param rootDirectory the project root directory
+     * @return a project model with discovered source roots and default settings
+     */
     public static ProjectModel of(Path rootDirectory) {
         return of(rootDirectory, JspecifyConfig.defaults());
     }
 
+    /**
+     * Creates a project model rooted at the given directory using the supplied configuration.
+     *
+     * @param rootDirectory the project root directory
+     * @param config the configuration supplying source roots, excludes, and policy
+     * @return a project model populated from the configuration
+     */
     public static ProjectModel of(Path rootDirectory, JspecifyConfig config) {
         Path root = rootDirectory.toAbsolutePath().normalize();
         return new ProjectModel(rootDirectory.getFileName() == null
@@ -57,6 +97,15 @@ public record ProjectModel(
                 config.followSymlinks());
     }
 
+    /**
+     * Creates a project model with explicit source roots and path excludes.
+     *
+     * @param rootDirectory the project root directory
+     * @param sourceRoots the source roots to traverse, or {@code null} to discover them
+     * @param excludedPathPatterns glob patterns for paths to skip
+     * @param followSymlinks whether symbolic links are followed during traversal
+     * @return a project model with empty package and public API selectors
+     */
     public static ProjectModel of(Path rootDirectory,
                                   List<Path> sourceRoots,
                                   List<String> excludedPathPatterns,
@@ -65,6 +114,18 @@ public record ProjectModel(
                 List.of(), List.of(), false, followSymlinks);
     }
 
+    /**
+     * Creates a project model with explicit source roots, excludes, and public API selectors.
+     *
+     * @param rootDirectory the project root directory
+     * @param sourceRoots the source roots to traverse, or {@code null} to discover them
+     * @param excludedPathPatterns glob patterns for paths to skip
+     * @param publicApiIncludes glob patterns selecting public API packages
+     * @param publicApiExcludes glob patterns excluding packages from the public API
+     * @param publicApiJpmsExportsOnly whether the public API is limited to JPMS-exported packages
+     * @param followSymlinks whether symbolic links are followed during traversal
+     * @return a project model with empty package-marking selectors
+     */
     public static ProjectModel of(Path rootDirectory,
                                   List<Path> sourceRoots,
                                   List<String> excludedPathPatterns,
@@ -77,6 +138,20 @@ public record ProjectModel(
                 followSymlinks);
     }
 
+    /**
+     * Creates a fully specified project model.
+     *
+     * @param rootDirectory the project root directory
+     * @param sourceRoots the source roots to traverse, or {@code null} to discover them
+     * @param excludedPathPatterns glob patterns for paths to skip
+     * @param markPackages glob patterns for packages eligible for {@code @NullMarked}
+     * @param leaveUnmarkedPackages glob patterns for packages to leave unmarked
+     * @param publicApiIncludes glob patterns selecting public API packages
+     * @param publicApiExcludes glob patterns excluding packages from the public API
+     * @param publicApiJpmsExportsOnly whether the public API is limited to JPMS-exported packages
+     * @param followSymlinks whether symbolic links are followed during traversal
+     * @return a project model populated from the given selectors
+     */
     public static ProjectModel of(Path rootDirectory,
                                   List<Path> sourceRoots,
                                   List<String> excludedPathPatterns,
@@ -140,6 +215,13 @@ public record ProjectModel(
         }
     }
 
+    /**
+     * Determines whether a file should be scanned, honoring symlink policy, the
+     * project root boundary, and the configured path-exclusion patterns.
+     *
+     * @param file the candidate file
+     * @return {@code true} if the file should be scanned, {@code false} otherwise
+     */
     public boolean shouldScan(Path file) {
         if (Files.isSymbolicLink(file) && !followSymlinks) {
             return false;
@@ -160,6 +242,17 @@ public record ProjectModel(
         return true;
     }
 
+    /**
+     * Tests whether a package name matches a glob pattern.
+     *
+     * <p>The pattern supports a trailing {@code .**} to match a package and all of
+     * its sub-packages, {@code **} to match any characters including dots, and
+     * {@code *} to match any characters except a dot.
+     *
+     * @param pattern the package glob pattern
+     * @param packageName the fully qualified package name to test
+     * @return {@code true} if {@code packageName} matches {@code pattern}
+     */
     public boolean packageMatches(String pattern, String packageName) {
         if (pattern.endsWith(".**")) {
             String prefix = pattern.substring(0, pattern.length() - 3);

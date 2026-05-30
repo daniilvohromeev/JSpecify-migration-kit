@@ -2,6 +2,8 @@ package io.github.javamodernizationlabs.jspecify.scan;
 
 import io.github.javamodernizationlabs.jspecify.AnnotationInventory;
 import io.github.javamodernizationlabs.jspecify.ProjectModel;
+import io.github.javamodernizationlabs.jspecify.config.JspecifyConfig;
+import io.github.javamodernizationlabs.jspecify.config.JspecifyConfigLoader;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -10,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AnnotationScannerTest {
@@ -83,6 +86,36 @@ class AnnotationScannerTest {
                 inv.totalByAnnotation().get("org.jetbrains.annotations.Nullable"));
         assertEquals(1,
                 inv.totalByAnnotation().get("javax.annotation.Nullable"));
+    }
+
+    @Test
+    void forConfigHonorsCustomAnnotationMappings(@TempDir Path tmp) throws IOException {
+        Files.writeString(tmp.resolve("jspecify.yml"),
+                """
+                annotations:
+                  mappings:
+                    com.acme.Nullable: org.jspecify.annotations.Nullable
+                """);
+        Path mainJava = tmp.resolve("src/main/java/com/acme");
+        Files.createDirectories(mainJava);
+        Files.writeString(mainJava.resolve("Api.java"),
+                """
+                package com.acme;
+                import com.acme.Nullable;
+                public class Api { @Nullable String name() { return null; } }
+                """);
+
+        JspecifyConfig config = JspecifyConfigLoader.load(tmp);
+        ProjectModel model = ProjectModel.of(tmp, config);
+
+        // The default catalog has no knowledge of com.acme.Nullable, so a bare
+        // scanner (the pre-fix behavior of report/Gradle/Maven entry points)
+        // never counts it.
+        assertNull(new AnnotationScanner().scan(model)
+                .totalByAnnotation().get("com.acme.Nullable"));
+        // A config-aware scanner honors the custom mapping.
+        assertEquals(1, AnnotationScanner.forConfig(config).scan(model)
+                .totalByAnnotation().get("com.acme.Nullable"));
     }
 
     @Test

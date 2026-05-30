@@ -11,11 +11,32 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+/**
+ * Reads and writes the baseline of accepted issue fingerprints.
+ *
+ * <p>A baseline records the fingerprints of known issues so that subsequent runs
+ * can distinguish newly introduced issues from pre-existing ones. The on-disk
+ * format is a small JSON document containing a list of fingerprints.
+ */
 public final class BaselineStore {
 
     private static final Pattern FINGERPRINT =
             Pattern.compile("\"fingerprint\"\\s*:\\s*\"([^\"]+)\"");
 
+    /**
+     * Creates a {@code BaselineStore}.
+     */
+    public BaselineStore() {
+    }
+
+    /**
+     * Reads the set of fingerprints recorded in a baseline file.
+     *
+     * @param baselineFile the baseline file to read; a {@code null} or
+     *     non-existent file yields an empty set
+     * @return the fingerprints recorded in the baseline, in encounter order
+     * @throws IOException if the file exists but cannot be read
+     */
     public Set<String> read(Path baselineFile) throws IOException {
         if (baselineFile == null || !Files.isRegularFile(baselineFile)) {
             return Set.of();
@@ -29,6 +50,14 @@ public final class BaselineStore {
         return fingerprints;
     }
 
+    /**
+     * Filters the given issues down to those not present in the baseline.
+     *
+     * @param issues the issues to filter
+     * @param baselineFile the baseline file whose fingerprints are excluded
+     * @return the issues whose fingerprints are not in the baseline
+     * @throws IOException if the baseline file exists but cannot be read
+     */
     public List<Issue> newIssues(List<Issue> issues, Path baselineFile) throws IOException {
         Set<String> baseline = read(baselineFile);
         return issues.stream()
@@ -36,6 +65,14 @@ public final class BaselineStore {
                 .toList();
     }
 
+    /**
+     * Writes the fingerprints of the given issues to a baseline file, creating
+     * parent directories as needed.
+     *
+     * @param baselineFile the file to write the baseline to
+     * @param issues the issues whose fingerprints make up the baseline
+     * @throws IOException if the parent directories or file cannot be written
+     */
     public void write(Path baselineFile, List<Issue> issues) throws IOException {
         if (baselineFile.getParent() != null) {
             Files.createDirectories(baselineFile.getParent());

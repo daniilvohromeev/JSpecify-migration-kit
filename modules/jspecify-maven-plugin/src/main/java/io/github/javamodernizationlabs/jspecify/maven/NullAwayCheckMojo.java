@@ -14,8 +14,22 @@ import java.nio.file.Files;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Implements the {@code jspecify:nullaway-check} goal.
+ *
+ * <p>This goal verifies that the current Maven project exposes an executable Error Prone and
+ * NullAway compiler setup and, when the check is enabled, generates a ready-to-use
+ * {@code compilerArgs} snippet together with a Markdown status report in the configured output
+ * directory. When the check is disabled, it writes only a {@code disabled} status report.
+ */
 @Mojo(name = "nullaway-check", threadSafe = true, requiresProject = true)
 public class NullAwayCheckMojo extends AbstractMojo {
+
+    /**
+     * Creates a {@code NullAwayCheckMojo}.
+     */
+    public NullAwayCheckMojo() {
+    }
 
     @Parameter(defaultValue = "${project}", readonly = true, required = true)
     private MavenProject project;
@@ -36,6 +50,17 @@ public class NullAwayCheckMojo extends AbstractMojo {
     @Parameter
     private List<String> excludedClasses;
 
+    /**
+     * Runs the {@code jspecify:nullaway-check} goal.
+     *
+     * <p>When the check is disabled, writes a {@code disabled} status report and returns. Otherwise
+     * validates that annotated packages are configured and that the project provides an Error Prone
+     * and NullAway compiler setup, then writes the generated compiler argument snippet and a
+     * {@code ready} status report to the configured output directory.
+     *
+     * @throws MojoExecutionException if no annotated packages are configured, the project does not
+     *     expose an executable Error Prone or NullAway setup, or the output cannot be written
+     */
     @Override
     public void execute() throws MojoExecutionException {
         try {

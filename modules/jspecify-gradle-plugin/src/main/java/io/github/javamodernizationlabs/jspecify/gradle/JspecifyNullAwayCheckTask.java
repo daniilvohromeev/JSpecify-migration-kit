@@ -17,24 +17,75 @@ import java.nio.file.Files;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Gradle task that generates NullAway/Error Prone configuration for the JSpecify migration.
+ *
+ * <p>When NullAway verification is enabled, the task validates that the project exposes an
+ * executable Error Prone and NullAway setup, then writes a ready-to-use Gradle snippet and a
+ * Markdown status report into the configured output directory. When verification is disabled,
+ * it records the disabled status instead.</p>
+ */
 @DisableCachingByDefault(because = "Inspects project task and dependency configuration.")
 public abstract class JspecifyNullAwayCheckTask extends DefaultTask {
 
+    /**
+     * Creates a {@code JspecifyNullAwayCheckTask}.
+     */
+    public JspecifyNullAwayCheckTask() {
+    }
+
+    /**
+     * Whether the NullAway verification profile is enabled.
+     *
+     * @return a {@code Property<Boolean>} that is {@code true} when NullAway verification is enabled
+     */
     @Input
     public abstract Property<Boolean> getNullAwayEnabled();
 
+    /**
+     * The NullAway severity mode, for example {@code warn} or {@code error}.
+     *
+     * @return a {@code Property<String>} holding the NullAway mode
+     */
     @Input
     public abstract Property<String> getMode();
 
+    /**
+     * The packages NullAway should treat as annotated.
+     *
+     * @return a {@code ListProperty<String>} of annotated package names
+     */
     @Input
     public abstract ListProperty<String> getAnnotatedPackages();
 
+    /**
+     * The classes NullAway should exclude from analysis.
+     *
+     * @return a {@code ListProperty<String>} of excluded class names
+     */
     @Input
     public abstract ListProperty<String> getExcludedClasses();
 
+    /**
+     * The directory into which the generated NullAway configuration and report are written.
+     *
+     * @return a {@link DirectoryProperty} pointing at the output directory
+     */
     @OutputDirectory
     public abstract DirectoryProperty getOutputDirectory();
 
+    /**
+     * Verifies the NullAway setup and writes the generated configuration and status report.
+     *
+     * <p>If verification is disabled, writes a Markdown report recording the disabled status.
+     * Otherwise it requires that at least one annotated package is configured and that the
+     * project exposes an Error Prone and NullAway setup, then writes a Gradle snippet and a
+     * Markdown status report.</p>
+     *
+     * @throws IOException if a configuration file or report cannot be written
+     * @throws GradleException if verification is enabled but no annotated packages are
+     *         configured, or the project lacks an executable Error Prone/NullAway setup
+     */
     @TaskAction
     public void run() throws IOException {
         var output = getOutputDirectory().getAsFile().get().toPath();

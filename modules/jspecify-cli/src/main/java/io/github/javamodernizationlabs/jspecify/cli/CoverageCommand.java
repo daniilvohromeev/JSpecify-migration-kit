@@ -13,6 +13,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Callable;
 
+/**
+ * The {@code coverage} command, which reports how much of a project's public API carries an
+ * explicit JSpecify nullness contract.
+ *
+ * <p>It analyses the project rooted at {@code --project} for the requested {@code --scope}
+ * (currently only {@code public-api} is supported) and writes coverage reports in the formats
+ * chosen by {@code --format} into the directory selected by {@code --output-dir}. The overall
+ * specified ratio is also printed to standard output.</p>
+ */
 @Command(
         name = "coverage",
         description = "Generate a public API nullness coverage report.",
@@ -20,11 +29,26 @@ import java.util.concurrent.Callable;
 )
 public class CoverageCommand implements Callable<Integer> {
 
+    /**
+     * Creates a {@code CoverageCommand}.
+     */
+    public CoverageCommand() {
+    }
+
     @Option(names = {"--project"}, defaultValue = ".") Path project;
     @Option(names = {"--scope"}, defaultValue = "public-api") String scope;
     @Option(names = {"--format"}, split = ",") List<String> formats;
     @Option(names = {"--output-dir"}) Path output;
 
+    /**
+     * Analyses public API nullness coverage and writes the requested coverage reports.
+     *
+     * <p>Returns {@code 2} when an unsupported {@code --scope} is requested, and {@code 0}
+     * once the analysis has completed and the reports have been written.</p>
+     *
+     * @return the process exit code: {@code 0} on success, {@code 2} on an unsupported scope
+     * @throws Exception if loading the project, analysing coverage or writing the reports fails
+     */
     @Override
     public Integer call() throws Exception {
         if (!scope.equalsIgnoreCase("public-api")) {

@@ -3,8 +3,36 @@ package io.github.javamodernizationlabs.jspecify.gradle;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 
+/**
+ * Gradle plugin that wires the JSpecify Migration Kit into a Gradle build.
+ *
+ * <p>Applying this plugin registers the {@code jspecifyMigration} project extension
+ * (see {@link JspecifyMigrationExtension}) together with a set of verification and
+ * reporting tasks that inventory legacy nullness annotations, generate migration
+ * reports, preview and apply rewrite recipes, measure public API nullness coverage,
+ * verify NullAway configuration and verify Kotlin interoperability.</p>
+ */
 public class JspecifyMigrationPlugin implements Plugin<Project> {
 
+    /**
+     * Creates a new plugin instance.
+     *
+     * <p>Gradle instantiates plugins reflectively, so this constructor exists only to
+     * provide documented public API.</p>
+     */
+    public JspecifyMigrationPlugin() {
+    }
+
+    /**
+     * Applies the plugin to the given project.
+     *
+     * <p>This registers the {@code jspecifyMigration} extension with its conventions and
+     * the JSpecify migration tasks ({@code jspecifyPlan}, {@code jspecifyReport},
+     * {@code jspecifyRewriteDryRun}, {@code jspecifyRewriteApply}, {@code jspecifyCoverage},
+     * {@code jspecifyNullAwayCheck} and {@code jspecifyVerifyKotlin}).</p>
+     *
+     * @param project the Gradle project the plugin is applied to
+     */
     @Override
     public void apply(Project project) {
         var extension = project.getExtensions().create(
@@ -26,6 +54,7 @@ public class JspecifyMigrationPlugin implements Plugin<Project> {
         extension.getKotlinVerification().getEnabled().convention(false);
         extension.getKotlinVerification().getGeneratedSourceSet()
                 .convention("jspecifyKotlinVerification");
+        extension.getKotlinVerification().getCompileSamples().convention(false);
         extension.getKotlinVerification().getFailOnWarnings().convention(false);
         extension.getReports().getHtmlRequired().convention(true);
         extension.getReports().getSarifRequired().convention(true);
@@ -83,6 +112,7 @@ public class JspecifyMigrationPlugin implements Plugin<Project> {
             t.setDescription("Generate Kotlin interop verification artifacts.");
             t.getKotlinVerificationEnabled().set(extension.getKotlinVerification().getEnabled());
             t.getGeneratedSourceSet().set(extension.getKotlinVerification().getGeneratedSourceSet());
+            t.getCompileSamples().set(extension.getKotlinVerification().getCompileSamples());
             t.getFailOnWarnings().set(extension.getKotlinVerification().getFailOnWarnings());
             t.getOutputDirectory().set(extension.getReportsDirectory()
                     .map(dir -> dir.dir("kotlin-verification")));

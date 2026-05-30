@@ -3,8 +3,27 @@ package io.github.javamodernizationlabs.jspecify;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Builds a staged {@link MigrationPlan} from an {@link AnnotationInventory}.
+ *
+ * <p>The planner emits a fixed sequence of phases (add dependency, convert
+ * annotations, mark packages, enable NullAway) and estimates overall risk from the
+ * volume and variety of legacy annotations found.
+ */
 public final class MigrationPlanner {
 
+    /**
+     * Creates a {@code MigrationPlanner}.
+     */
+    public MigrationPlanner() {
+    }
+
+    /**
+     * Produces a migration plan for the given annotation inventory.
+     *
+     * @param inventory the inventory of legacy annotations found in the project
+     * @return a plan describing the phases, estimated risk, and surfaced issues
+     */
     public MigrationPlan plan(AnnotationInventory inventory) {
         List<MigrationPlan.Phase> phases = List.of(
                 new MigrationPlan.Phase(1,

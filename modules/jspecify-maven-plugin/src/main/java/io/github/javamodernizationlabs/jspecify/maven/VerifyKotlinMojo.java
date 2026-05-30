@@ -14,8 +14,22 @@ import java.io.File;
 import java.nio.file.Files;
 import java.util.List;
 
+/**
+ * Implements the {@code jspecify:verify-kotlin} goal.
+ *
+ * <p>This goal verifies how the current Maven project's JSpecify nullness annotations are seen from
+ * Kotlin. It can optionally generate Kotlin interop samples and compile them, and writes a
+ * verification report to the configured output directory. When configured to fail on warnings, it
+ * fails the build if any verification warnings are produced.
+ */
 @Mojo(name = "verify-kotlin", threadSafe = true, requiresProject = true)
 public class VerifyKotlinMojo extends AbstractMojo {
+
+    /**
+     * Creates a {@code VerifyKotlinMojo}.
+     */
+    public VerifyKotlinMojo() {
+    }
 
     @Parameter(property = "jspecify.outputDirectory",
             defaultValue = "${project.build.directory}/reports/jml/jspecify/kotlin-verification")
@@ -33,6 +47,16 @@ public class VerifyKotlinMojo extends AbstractMojo {
     @Parameter(property = "jspecify.kotlin.failOnWarnings", defaultValue = "false")
     private boolean failOnWarnings;
 
+    /**
+     * Runs the {@code jspecify:verify-kotlin} goal.
+     *
+     * <p>Loads the JSpecify configuration, runs the Kotlin interop verifier over the project (using
+     * the project's compiled output directory and the configured sample-generation and compilation
+     * options), and writes the verification report to the configured output directory.
+     *
+     * @throws MojoExecutionException if the configuration cannot be loaded, verification fails, or
+     *     verification produces warnings while fail-on-warnings mode is enabled
+     */
     @Override
     public void execute() throws MojoExecutionException {
         try {

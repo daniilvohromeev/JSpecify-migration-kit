@@ -4,8 +4,26 @@ import io.github.javamodernizationlabs.jspecify.MigrationPlan;
 
 import java.io.PrintStream;
 
+/**
+ * Renders a {@link MigrationPlan} as a human-readable summary on a text stream.
+ *
+ * <p>Intended for interactive console output; the layout aligns annotation
+ * counts in columns and lists the recommended migration phases.
+ */
 public final class ConsoleReportWriter {
 
+    /**
+     * Creates a {@code ConsoleReportWriter}.
+     */
+    public ConsoleReportWriter() {
+    }
+
+    /**
+     * Writes a plain-text summary of the migration plan to the given stream.
+     *
+     * @param out the stream to print the report to
+     * @param plan the migration plan to render
+     */
     public void write(PrintStream out, MigrationPlan plan) {
         out.println("JSpecify migration plan");
         out.println();

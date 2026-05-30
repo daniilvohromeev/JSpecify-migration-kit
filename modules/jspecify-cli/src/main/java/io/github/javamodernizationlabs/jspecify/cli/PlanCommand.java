@@ -22,12 +22,30 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+/**
+ * The {@code plan} command, which inventories legacy nullness annotations and emits a
+ * JSpecify migration plan.
+ *
+ * <p>It scans the project rooted at {@code --project}, builds a migration plan from the
+ * discovered annotations, and writes the requested report formats (one or more of console,
+ * JSON, Markdown, SARIF, HTML and JUnit XML) selected with {@code --format} into the
+ * directory chosen by {@code --output-dir}. The command also supports CI gating: it can
+ * record current issue fingerprints with {@code --baseline-write} and compare against an
+ * existing baseline given by {@code --baseline}, failing when new issues at or above the
+ * {@code --fail-on} severity are found unless {@code --allow-new-issues} is set.</p>
+ */
 @Command(
         name = "plan",
         description = "Inventory legacy nullness annotations and emit a migration plan.",
         mixinStandardHelpOptions = true
 )
 public class PlanCommand implements Callable<Integer> {
+
+    /**
+     * Creates a {@code PlanCommand}.
+     */
+    public PlanCommand() {
+    }
 
     @Option(names = {"--project"}, description = "Project root (default: current directory)",
             defaultValue = ".")
@@ -54,14 +72,23 @@ public class PlanCommand implements Callable<Integer> {
     @Option(names = {"--allow-new-issues"}, description = "Do not fail on new issues")
     boolean allowNewIssues;
 
+    /**
+     * Scans the project, builds the migration plan, writes the requested reports and applies
+     * baseline gating.
+     *
+     * <p>Returns {@code 2} when an unknown report format is requested, {@code 1} when baseline
+     * gating finds new issues at or above the configured severity, and {@code 0} otherwise.</p>
+     *
+     * @return the process exit code: {@code 0} on success, {@code 1} on failing new issues,
+     *         {@code 2} on an unknown report format
+     * @throws Exception if scanning, planning, baseline handling or report writing fails
+     */
     @Override
     public Integer call() throws Exception {
         Path projectRoot = project.toAbsolutePath().normalize();
         JspecifyConfig config = JspecifyConfigLoader.load(projectRoot);
         ProjectModel model = ProjectModel.of(projectRoot, config);
-        AnnotationInventory inventory = new AnnotationScanner(
-                new io.github.javamodernizationlabs.jspecify.AnnotationCatalog(
-                        config.annotationMappings())).scan(model);
+        AnnotationInventory inventory = AnnotationScanner.forConfig(config).scan(model);
         MigrationPlan plan = new MigrationPlanner().plan(inventory);
         List<String> effectiveFormats = formats == null || formats.isEmpty()
                 ? config.reportFormats()
@@ -74,6 +101,7 @@ public class PlanCommand implements Callable<Integer> {
             baselineStore.write(baselineWrite.toAbsolutePath().normalize(), plan.issues());
         }
 
+        boolean unknownFormat = false;
         for (String format : effectiveFormats) {
             switch (format.trim().toLowerCase()) {
                 case "console" -> new ConsoleReportWriter().write(System.out, plan);
@@ -87,8 +115,15 @@ public class PlanCommand implements Callable<Integer> {
                         .write(effectiveOutputDir.resolve("index.html"), plan);
                 case "junit", "junit-xml" -> new JunitXmlReportWriter()
                         .write(effectiveOutputDir.resolve("TEST-jspecify-migration.xml"), plan);
-                default -> System.err.println("Unknown format: " + format);
+                default -> {
+                    System.err.println("Unknown format: " + format);
+                    unknownFormat = true;
+                }
             }
+        }
+        // Fail fast on a typo'd format so CI does not pass with no report written.
+        if (unknownFormat) {
+            return 2;
         }
         if (allowNewIssues || baseline == null) {
             return 0;

@@ -23,6 +23,17 @@ public final class JspecifyConfigLoader {
 
     private JspecifyConfigLoader() {}
 
+    /**
+     * Loads configuration for the given project root.
+     *
+     * <p>If present, {@code jml.yml} is read first and then {@code jspecify.yml}
+     * is layered on top; missing files are ignored. Unset keys fall back to the
+     * defaults defined by {@link JspecifyConfig}.
+     *
+     * @param projectRoot the project root directory to look for config files in
+     * @return the resolved configuration
+     * @throws IOException if a config file exists but cannot be read
+     */
     public static JspecifyConfig load(Path projectRoot) throws IOException {
         Path root = projectRoot.toAbsolutePath().normalize();
         ConfigBuilder builder = new ConfigBuilder();

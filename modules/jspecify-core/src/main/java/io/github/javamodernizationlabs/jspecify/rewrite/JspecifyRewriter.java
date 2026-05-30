@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -21,6 +22,14 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
+/**
+ * Applies source and build-file rewrites that move a project toward JSpecify.
+ *
+ * <p>Supported recipes include adding the JSpecify dependency, converting known
+ * legacy nullness annotations, adding package-level {@code @NullMarked}, removing
+ * obsolete annotation dependencies, and reporting ambiguous type-use placements.
+ * Recipes can be previewed (dry run) or applied to disk.
+ */
 public final class JspecifyRewriter {
 
     private static final Set<String> UNSAFE_DEFAULT_ANNOTATIONS = Set.of(
@@ -35,14 +44,35 @@ public final class JspecifyRewriter {
 
     private final AnnotationCatalog catalog;
 
+    /**
+     * Creates a rewriter backed by the default annotation catalog.
+     */
     public JspecifyRewriter() {
         this(AnnotationCatalog.defaults());
     }
 
+    /**
+     * Creates a rewriter backed by the given annotation catalog.
+     *
+     * @param catalog the catalog of legacy-to-JSpecify annotation mappings to apply
+     */
     public JspecifyRewriter(AnnotationCatalog catalog) {
         this.catalog = catalog;
     }
 
+    /**
+     * Runs the requested rewrite recipes against the project.
+     *
+     * <p>When {@code apply} is {@code false}, changes are computed but not written,
+     * producing a preview of what would change.
+     *
+     * @param project the project to rewrite
+     * @param rawRecipes the recipe names or aliases to run; defaults to converting
+     *        known annotations when {@code null} or empty
+     * @param apply whether to write changes to disk ({@code true}) or only preview them
+     * @return the aggregate result of the run
+     * @throws IOException if a source or build file cannot be read or written
+     */
     public RewriteResult rewrite(ProjectModel project, List<String> rawRecipes, boolean apply)
             throws IOException {
         Set<String> recipes = normalizeRecipes(rawRecipes);
@@ -214,7 +244,8 @@ public final class JspecifyRewriter {
             Pattern sourcePattern = Pattern.compile("\\b" + Pattern.quote(source) + "\\b");
             int before = occurrences(sourcePattern, updated);
             if (before > 0) {
-                updated = sourcePattern.matcher(updated).replaceAll(target);
+                updated = sourcePattern.matcher(updated)
+                        .replaceAll(Matcher.quoteReplacement(target));
                 replacements += before;
             }
             String sourceSimple = source.substring(source.lastIndexOf('.') + 1);
@@ -223,7 +254,7 @@ public final class JspecifyRewriter {
                     + Pattern.quote(target) + "\\s*;");
             if (importPattern.matcher(updated).find()) {
                 updated = updated.replaceAll("@" + Pattern.quote(sourceSimple) + "\\b",
-                        "@" + targetSimple);
+                        Matcher.quoteReplacement("@" + targetSimple));
             }
         }
 
@@ -297,8 +328,8 @@ public final class JspecifyRewriter {
                 }
                 String updated = content.replaceFirst("package\\s+" + Pattern.quote(packageName)
                                 + "\\s*;",
-                        "@NullMarked\npackage " + packageName
-                                + ";\n\nimport org.jspecify.annotations.NullMarked;");
+                        Matcher.quoteReplacement("@NullMarked\npackage " + packageName
+                                + ";\n\nimport org.jspecify.annotations.NullMarked;"));
                 if (apply) {
                     Files.writeString(packageInfo, updated, StandardCharsets.UTF_8);
                 }

@@ -26,6 +26,12 @@ import java.util.Set;
 public class AddNullMarkedToPackage
         extends ScanningRecipe<AddNullMarkedToPackage.PackageIndex> {
 
+    /**
+     * Creates an {@code AddNullMarkedToPackage} recipe.
+     */
+    public AddNullMarkedToPackage() {
+    }
+
     private static final Set<String> CONFLICTING_DEFAULT_ANNOTATIONS = Set.of(
             "ParametersAreNonnullByDefault",
             "NonNullApi",
@@ -34,11 +40,23 @@ public class AddNullMarkedToPackage
             "DefaultAnnotation",
             "DefaultQualifier");
 
+    /**
+     * Returns the human-readable display name shown for this recipe in
+     * OpenRewrite tooling.
+     *
+     * @return the recipe display name
+     */
     @Override
     public String getDisplayName() {
         return "Add package-level JSpecify NullMarked";
     }
 
+    /**
+     * Returns the description explaining what this recipe does and which
+     * sources it deliberately skips.
+     *
+     * @return the recipe description
+     */
     @Override
     public String getDescription() {
         return "Creates or updates package-info.java with package-level @NullMarked, "
@@ -46,11 +64,28 @@ public class AddNullMarkedToPackage
                 + "nullness annotations.";
     }
 
+    /**
+     * Creates the initial accumulator used to collect per-package state across
+     * the scanning phase.
+     *
+     * @param ctx the execution context for the current run
+     * @return a fresh, empty {@link PackageIndex}
+     */
     @Override
     public PackageIndex getInitialValue(ExecutionContext ctx) {
         return new PackageIndex();
     }
 
+    /**
+     * Returns the scanning visitor that inspects each compilation unit and
+     * records, in the shared accumulator, whether each package already has a
+     * {@code package-info.java}, an existing {@code @NullMarked} annotation, or
+     * a conflicting default nullness annotation.
+     *
+     * @param packageIndex the shared accumulator that gathers per-package state
+     * @return a {@link TreeVisitor} that populates {@code packageIndex} without
+     *         modifying any sources
+     */
     @Override
     public TreeVisitor<?, ExecutionContext> getScanner(PackageIndex packageIndex) {
         return new JavaIsoVisitor<>() {
@@ -81,6 +116,16 @@ public class AddNullMarkedToPackage
         };
     }
 
+    /**
+     * Generates new {@code package-info.java} source files for every package
+     * that lacks one and is eligible for a package-level {@code @NullMarked}
+     * default.
+     *
+     * @param packageIndex the accumulator populated during the scanning phase
+     * @param ctx the execution context for the current run
+     * @return the collection of newly created {@link SourceFile} instances; may
+     *         be empty when no package needs a new {@code package-info.java}
+     */
     @Override
     public Collection<? extends SourceFile> generate(PackageIndex packageIndex,
                                                      ExecutionContext ctx) {
@@ -90,6 +135,15 @@ public class AddNullMarkedToPackage
                 .toList();
     }
 
+    /**
+     * Returns the editing visitor that adds {@code @NullMarked} to existing
+     * {@code package-info.java} files for packages identified during scanning as
+     * eligible, importing {@code org.jspecify.annotations.NullMarked} as needed.
+     *
+     * @param packageIndex the accumulator populated during the scanning phase
+     * @return a {@link TreeVisitor} that updates eligible
+     *         {@code package-info.java} compilation units
+     */
     @Override
     public TreeVisitor<?, ExecutionContext> getVisitor(PackageIndex packageIndex) {
         return new JavaIsoVisitor<>() {

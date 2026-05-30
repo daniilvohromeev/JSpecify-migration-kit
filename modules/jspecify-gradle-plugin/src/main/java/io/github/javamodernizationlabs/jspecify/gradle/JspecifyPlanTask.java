@@ -21,18 +21,46 @@ import org.gradle.work.DisableCachingByDefault;
 
 import java.io.IOException;
 
+/**
+ * Gradle task that scans the project for legacy nullness annotations and emits a JSpecify
+ * migration plan.
+ *
+ * <p>The task loads the JSpecify configuration, builds a project model, scans for annotations,
+ * computes a migration plan and writes console, JSON, Markdown, SARIF, HTML and JUnit XML
+ * reports into the configured output directory.</p>
+ */
 @DisableCachingByDefault(because = "Scans project sources and writes reports from local filesystem state.")
 public abstract class JspecifyPlanTask extends DefaultTask {
 
+    /**
+     * Creates a {@code JspecifyPlanTask}.
+     */
+    public JspecifyPlanTask() {
+    }
+
+    /**
+     * The directory into which the generated migration plan reports are written.
+     *
+     * @return a {@link DirectoryProperty} pointing at the report output directory
+     */
     @OutputDirectory
     public abstract DirectoryProperty getOutputDirectory();
 
+    /**
+     * Scans the project and writes the JSpecify migration plan reports.
+     *
+     * <p>Loads the JSpecify configuration, builds the project model, scans for legacy
+     * nullness annotations, plans the migration and writes the console, JSON, Markdown,
+     * SARIF, HTML and JUnit XML reports.</p>
+     *
+     * @throws IOException if a report cannot be written to the output directory
+     */
     @TaskAction
     public void run() throws IOException {
         var projectRoot = getProject().getProjectDir().toPath();
         JspecifyConfig config = JspecifyConfigLoader.load(projectRoot);
         ProjectModel model = ProjectModel.of(projectRoot, config);
-        AnnotationInventory inventory = new AnnotationScanner().scan(model);
+        AnnotationInventory inventory = AnnotationScanner.forConfig(config).scan(model);
         MigrationPlan plan = new MigrationPlanner().plan(inventory);
 
         new ConsoleReportWriter().write(System.out, plan);

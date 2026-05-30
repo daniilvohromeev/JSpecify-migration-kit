@@ -11,8 +11,26 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+/**
+ * Renders a {@link CoverageSummary} into Markdown, JSON and HTML reports.
+ *
+ * <p>Each format presents the same nullness-coverage metrics; the writer can
+ * emit any subset of the formats to a directory.
+ */
 public final class CoverageReportWriter {
 
+    /**
+     * Creates a {@code CoverageReportWriter}.
+     */
+    public CoverageReportWriter() {
+    }
+
+    /**
+     * Renders the coverage summary as a Markdown table.
+     *
+     * @param summary the coverage summary to render
+     * @return the coverage report as Markdown text
+     */
     public String markdown(CoverageSummary summary) {
         return """
                 # JSpecify Coverage
@@ -54,6 +72,12 @@ public final class CoverageReportWriter {
                 summary.kotlinInteropWarnings());
     }
 
+    /**
+     * Renders the coverage summary as a JSON object.
+     *
+     * @param summary the coverage summary to render
+     * @return the coverage report as a JSON string
+     */
     public String json(CoverageSummary summary) {
         return "{"
                 + Json.string("publicApiElements") + ":" + Json.number(summary.publicApiElements()) + ","
@@ -87,10 +111,32 @@ public final class CoverageReportWriter {
                 + "}";
     }
 
+    /**
+     * Writes the coverage summary to the given directory in all supported
+     * formats (Markdown, JSON and HTML).
+     *
+     * @param outputDirectory the directory to write the report files into
+     * @param summary the coverage summary to render
+     * @throws IOException if the directory or any report file cannot be written
+     */
     public void write(Path outputDirectory, CoverageSummary summary) throws IOException {
         write(outputDirectory, summary, List.of("markdown", "json", "html"));
     }
 
+    /**
+     * Writes the coverage summary to the given directory in the requested
+     * formats.
+     *
+     * <p>Recognized format names are {@code markdown} (or {@code md}),
+     * {@code json} and {@code html}; comparison is case-insensitive and
+     * unrecognized names are ignored. A {@code null} or empty list defaults to
+     * all formats.
+     *
+     * @param outputDirectory the directory to write the report files into
+     * @param summary the coverage summary to render
+     * @param formats the report formats to emit
+     * @throws IOException if the directory or any report file cannot be written
+     */
     public void write(Path outputDirectory, CoverageSummary summary, List<String> formats)
             throws IOException {
         Files.createDirectories(outputDirectory);
@@ -109,6 +155,12 @@ public final class CoverageReportWriter {
         }
     }
 
+    /**
+     * Renders the coverage summary as a self-contained HTML document.
+     *
+     * @param summary the coverage summary to render
+     * @return the coverage report as an HTML string
+     */
     public String html(CoverageSummary summary) {
         return """
                 <!doctype html>
